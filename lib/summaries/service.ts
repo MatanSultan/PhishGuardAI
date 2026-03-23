@@ -1,9 +1,16 @@
-import type { Channel, SimulationCategory, SupportedLocale, WeaknessKey } from '@/lib/constants'
+import type {
+  Channel,
+  OrganizationType,
+  SimulationCategory,
+  SupportedLocale,
+  WeaknessKey,
+} from '@/lib/constants'
 import type { TableRow } from '@/lib/database.types'
 import {
   generateOrganizationSummaryWithGroq,
   generatePersonalSummaryWithGroq,
 } from '@/lib/groq/service'
+import { getOrganizationSegmentProfile } from '@/lib/organizations/segments'
 import {
   formatCategoryLabel,
   formatChannelLabel,
@@ -21,9 +28,10 @@ interface OrganizationRecommendationInput {
     | 'improve_safe_detection'
     | 'increase_phishing_exposure'
     | 'reengage_low_activity'
-    | 'industry_mix'
+    | 'segment_mix'
   category?: SimulationCategory
   count?: number
+  organizationType?: OrganizationType | null
   industry?: string | null
   domains?: SimulationCategory[]
 }
@@ -31,6 +39,7 @@ interface OrganizationRecommendationInput {
 interface OrganizationSummaryInput {
   locale: SupportedLocale
   organizationName: string
+  organizationType?: OrganizationType | null
   industry?: string | null
   overview: {
     totalEmployees: number
@@ -74,6 +83,8 @@ interface PersonalSummaryInput {
     fullName: string | null
     email: string
   }
+  organizationName?: string | null
+  organizationType?: OrganizationType | null
   stats: {
     totalAttempts: number
     correctRate: number
@@ -103,6 +114,14 @@ function getLowestAccuracyChannel(
   breakdown: OrganizationSummaryInput['channelBreakdown'],
 ) {
   return [...breakdown].sort((left, right) => left.correctRate - right.correctRate)[0] ?? null
+}
+
+function getOrganizationProfile(
+  locale: SupportedLocale,
+  organizationType?: OrganizationType | null,
+  industry?: string | null,
+) {
+  return getOrganizationSegmentProfile(organizationType, industry, locale)
 }
 
 function getPersonalSupportPattern(input: PersonalSummaryInput) {
@@ -164,10 +183,24 @@ function buildOrganizationRecommendationAction(
   locale: SupportedLocale,
   recommendation: OrganizationRecommendationInput,
 ) {
+  const organizationProfile = getOrganizationProfile(
+    locale,
+    recommendation.organizationType,
+    recommendation.industry,
+  )
+
   if (recommendation.kind === 'focus_category' && recommendation.category) {
     return locale === 'he'
-      ? `תעדפו אימונים ב-${formatCategoryLabel(recommendation.category, locale)} בשבוע הקרוב.`
-      : `Prioritize ${formatCategoryLabel(recommendation.category, locale)} scenarios next week.`
+      ? `תעדפו אימונים ב-${formatCategoryLabel(
+          recommendation.category,
+          locale,
+          recommendation.organizationType,
+        )} בשבוע הקרוב.`
+      : `Prioritize ${formatCategoryLabel(
+          recommendation.category,
+          locale,
+          recommendation.organizationType,
+        )} scenarios next week.`
   }
 
   if (recommendation.kind === 'improve_safe_detection') {
@@ -189,17 +222,35 @@ function buildOrganizationRecommendationAction(
   }
 
   const domainLabels = (recommendation.domains ?? [])
-    .map((domain) => formatCategoryLabel(domain, locale))
+    .map((domain) =>
+      formatCategoryLabel(domain, locale, recommendation.organizationType),
+    )
     .join(', ')
+
+  if (recommendation.kind === 'segment_mix') {
+    return locale === 'he'
+      ? `התאימו את תמהיל האימונים לארגון מסוג ${organizationProfile.label}, עם דגש על ${organizationProfile.focusTopics
+          .slice(0, 2)
+          .join(' ו')}.`
+      : `Use a ${organizationProfile.label.toLowerCase()} training mix with emphasis on ${organizationProfile.focusTopics
+          .slice(0, 2)
+          .join(' and ')}.`
+  }
 
   return locale === 'he'
     ? `התאימו את תמהיל האימונים לתעשייה עם דגש על ${domainLabels}.`
-    : `Use an industry-relevant training mix with emphasis on ${domainLabels}.`
+    : `Use a training mix with emphasis on ${domainLabels}.`
 }
 
 function buildFallbackOrganizationSummary(
   input: OrganizationSummaryInput,
 ): OrganizationSummaryResponse {
+  const organizationProfile = getOrganizationProfile(
+    input.locale,
+    input.organizationType,
+    input.industry,
+  )
+
   if (input.overview.totalSimulationsCompleted === 0) {
     return input.locale === 'he'
       ? {
@@ -240,15 +291,15 @@ function buildFallbackOrganizationSummary(
 
   const summary =
     input.locale === 'he'
-      ? `${input.organizationName} מציג צורך בחיזוק ממוקד סביב ${weakestCategory ? formatCategoryLabel(weakestCategory.category, input.locale) : 'תחומי הסיכון המרכזיים'}, עם ${lowEngagementCount} עובדים בעלי מעורבות נמוכה.`
-      : `${input.organizationName} currently needs focused reinforcement around ${weakestCategory ? formatCategoryLabel(weakestCategory.category, input.locale) : 'its main risk areas'}, with ${lowEngagementCount} employees showing low engagement.`
+      ? `${input.organizationName} צריך כרגע חיזוק ממוקד סביב ${weakestCategory ? formatCategoryLabel(weakestCategory.category, input.locale, input.organizationType) : 'תחומי הסיכון המרכזיים'}, עם ${lowEngagementCount} עובדים במעורבות נמוכה.`
+      : `${input.organizationName} currently needs focused reinforcement around ${weakestCategory ? formatCategoryLabel(weakestCategory.category, input.locale, input.organizationType) : 'its main risk areas'}, with ${lowEngagementCount} employees showing low engagement.`
 
   const riskSignals = sliceNonEmpty(
     [
       weakestCategory
         ? input.locale === 'he'
-          ? `${formatCategoryLabel(weakestCategory.category, input.locale)} הוא תחום החולשה המוביל בצוות.`
-          : `${formatCategoryLabel(weakestCategory.category, input.locale)} is the leading weak domain across the team.`
+          ? `${formatCategoryLabel(weakestCategory.category, input.locale, input.organizationType)} הוא תחום החולשה המוביל בצוות.`
+          : `${formatCategoryLabel(weakestCategory.category, input.locale, input.organizationType)} is the leading weak domain across the team.`
         : '',
       riskyChannel
         ? input.locale === 'he'
@@ -279,6 +330,7 @@ function buildFallbackOrganizationSummary(
       ...input.companyRecommendations.map((recommendation) =>
         buildOrganizationRecommendationAction(input.locale, recommendation),
       ),
+      organizationProfile.onboardingHint,
       input.locale === 'he'
         ? 'חזקו מדיניות של אימות שולח לפני לחיצה על קישורים דחופים.'
         : 'Reinforce sender-verification policy before employees act on urgent links.',
@@ -296,9 +348,19 @@ function buildFallbackOrganizationSummary(
 function buildFallbackPersonalSummary(
   input: PersonalSummaryInput,
 ): PersonalSummaryResponse {
+  const organizationProfile = getOrganizationProfile(
+    input.locale,
+    input.organizationType,
+    null,
+  )
+
   if (input.stats.totalAttempts === 0) {
     const preferredDomains = input.preferredDomains.length
-      ? input.preferredDomains.map((domain) => formatCategoryLabel(domain, input.locale)).join(', ')
+      ? input.preferredDomains
+          .map((domain) =>
+            formatCategoryLabel(domain, input.locale, input.organizationType),
+          )
+          .join(', ')
       : input.locale === 'he'
         ? 'מסלול מעורב'
         : 'mixed mode'
@@ -316,7 +378,7 @@ function buildFallbackPersonalSummary(
       : {
           summary: 'Your profile is ready. The next step is building a personal baseline with a few first attempts.',
           strengths: ['Your account is set up for personal training.', 'You can start with preferred domains or mixed mode.'],
-          focusAreas: [`Suggested starting focus: ${preferredDomains}.`],
+          focusAreas: [`Suggested starting focus: ${preferredDomains}.`, organizationProfile.employeeHint],
           practicalRules: [
             'Check the sender before clicking links.',
             'Pause when a message adds unusual urgency or asks for sensitive data.',
@@ -328,10 +390,18 @@ function buildFallbackPersonalSummary(
     .slice(0, 3)
     .map((weakness) => formatWeaknessLabel(weakness.weakness_key, weakness.weakness_label, input.locale))
   const strongestCategory = input.stats.strongestCategory
-    ? formatCategoryLabel(input.stats.strongestCategory, input.locale)
+    ? formatCategoryLabel(
+        input.stats.strongestCategory,
+        input.locale,
+        input.organizationType,
+      )
     : null
   const weakestCategory = input.stats.weakestCategory
-    ? formatCategoryLabel(input.stats.weakestCategory, input.locale)
+    ? formatCategoryLabel(
+        input.stats.weakestCategory,
+        input.locale,
+        input.organizationType,
+      )
     : null
 
   const strengths = sliceNonEmpty(
@@ -398,7 +468,7 @@ function buildFallbackPersonalSummary(
   const summary =
     input.locale === 'he'
       ? `הדיוק הכולל שלכם עומד על ${input.stats.correctRate}%. המשך חיזוק סביב ${weakestCategory ?? 'הסימנים הקטנים'} יעזור לשפר את היציבות ואת הביטחון בהחלטות.`
-      : `Your overall accuracy is ${input.stats.correctRate}%. A bit more reinforcement around ${weakestCategory ?? 'the smaller trust signals'} should improve consistency and confidence.`
+      : `Your overall accuracy is ${input.stats.correctRate}%. A bit more reinforcement around ${weakestCategory ?? organizationProfile.focusTopics[0] ?? 'the smaller trust signals'} should improve consistency and confidence.`
 
   return {
     summary,
@@ -420,7 +490,9 @@ export async function generateOrganizationRiskSummary(
   const groqSummary = await generateOrganizationSummaryWithGroq(input.locale, {
     organization: {
       name: input.organizationName,
+      type: input.organizationType ?? null,
       industry: input.industry ?? null,
+      segmentProfile: getOrganizationProfile(input.locale, input.organizationType, input.industry),
     },
     overview: input.overview,
     weakestCategories: input.weakestCategories,
@@ -448,6 +520,17 @@ export async function generatePersonalImprovementSummary(
       fullName: input.profile.fullName,
       email: input.profile.email,
     },
+    organization: input.organizationType
+      ? {
+          name: input.organizationName ?? null,
+          type: input.organizationType,
+          segmentProfile: getOrganizationProfile(
+            input.locale,
+            input.organizationType,
+            null,
+          ),
+        }
+      : null,
     stats: input.stats,
     preferredDomains: input.preferredDomains,
     topWeaknesses: input.weaknesses.slice(0, 5).map((weakness) => ({

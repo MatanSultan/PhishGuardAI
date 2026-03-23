@@ -27,6 +27,7 @@ import {
   getCompanyCopy,
 } from '@/lib/company-copy'
 import { useLocale } from '@/lib/locale-context'
+import { getOrganizationSegmentProfile } from '@/lib/organizations/segments'
 import {
   formatCategoryLabel,
   formatChannelLabel,
@@ -213,6 +214,11 @@ export default function AdminReportsPage() {
   const hasEmployeePerformance = data.employeePerformance.length > 0
   const hasRecentActivity = data.recentActivity.length > 0
   const filtersApplied = hasActiveFilters(filters)
+  const organizationProfile = getOrganizationSegmentProfile(
+    data.organization.organization_type,
+    data.organization.industry,
+    locale,
+  )
 
   return (
     <div className="container mx-auto space-y-6 px-4 py-8 lg:px-8" dir={dir}>
@@ -250,7 +256,7 @@ export default function AdminReportsPage() {
                   <SelectItem value="all">{companyCopy.reports.allDomains}</SelectItem>
                   {SIMULATION_CATEGORIES.map((category) => (
                     <SelectItem key={category} value={category}>
-                      {formatCategoryLabel(category, locale)}
+                      {formatCategoryLabel(category, locale, data.organization.organization_type)}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -347,6 +353,25 @@ export default function AdminReportsPage() {
         </CardContent>
       </Card>
 
+      <Card>
+        <CardHeader>
+          <CardTitle>{locale === 'he' ? 'סיכום פשוט למנהלים' : 'Plain-language manager summary'}</CardTitle>
+          <CardDescription>{organizationProfile.adminHint}</CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-6 lg:grid-cols-[1.2fr_1fr]">
+          <div className="rounded-lg border border-border bg-muted/30 p-4 text-sm leading-7 text-foreground">
+            {data.plainLanguageSummary}
+          </div>
+          <div className="space-y-3">
+            {data.practicalRecommendations.map((item) => (
+              <div key={item} className="rounded-lg border border-border p-3 text-sm">
+                {item}
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
       {!hasTeamAttempts ? (
         <Card className="border-primary/30 bg-primary/5">
           <CardHeader>
@@ -417,7 +442,7 @@ export default function AdminReportsPage() {
                   <BarChart
                     data={data.categoryBreakdown.map((item) => ({
                       ...item,
-                      label: formatCategoryLabel(item.key, locale),
+                      label: formatCategoryLabel(item.key, locale, data.organization.organization_type),
                     }))}
                   >
                     <CartesianGrid strokeDasharray="3 3" vertical={false} />
@@ -553,6 +578,32 @@ export default function AdminReportsPage() {
 
         <Card className="mt-6">
           <CardHeader>
+            <CardTitle>{locale === 'he' ? 'קבוצות שצריכות רענון' : 'Groups needing a refresher'}</CardTitle>
+            <CardDescription>
+              {locale === 'he'
+                ? 'חלוקה פשוטה למנהלים: את מי כדאי לחזק קודם.'
+                : 'A simple manager view of which employee groups should be reinforced first.'}
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {data.employeeGroupsNeedingRefreshers.length ? (
+              data.employeeGroupsNeedingRefreshers.map((item) => (
+                <div key={item} className="rounded-lg border border-border p-3 text-sm">
+                  {item}
+                </div>
+              ))
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                {locale === 'he'
+                  ? 'כרגע לא בולטת קבוצת עובדים שדורשת רענון מיוחד.'
+                  : 'No specific employee group currently stands out for extra refresher work.'}
+              </p>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card className="mt-6">
+          <CardHeader>
             <CardTitle>{locale === 'he' ? 'ביצועי עובדים' : 'Employee Performance'}</CardTitle>
           </CardHeader>
           <CardContent>
@@ -587,7 +638,7 @@ export default function AdminReportsPage() {
                       <TableCell>{employee.accuracyRate}%</TableCell>
                       <TableCell>{employee.streakCount}</TableCell>
                       <TableCell>{employee.totalAttempts}</TableCell>
-                      <TableCell>{formatCategoryLabel(employee.weakestCategory, locale)}</TableCell>
+                      <TableCell>{formatCategoryLabel(employee.weakestCategory, locale, data.organization.organization_type)}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>

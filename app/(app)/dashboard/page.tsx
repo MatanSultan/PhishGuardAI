@@ -16,10 +16,11 @@ import {
   Target,
 } from 'lucide-react'
 
-import { STARTER_DOMAIN_SUGGESTIONS } from '@/lib/constants'
+import { type OrganizationType } from '@/lib/constants'
 import { useLocale } from '@/lib/locale-context'
 import { formatCategoryLabel, formatDomainSummary, formatRelativeTimestamp } from '@/lib/presentation'
 import type { getDashboardData } from '@/lib/training/service'
+import { getSuggestedStarterDomains } from '@/lib/training/domains'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -129,9 +130,14 @@ export default function DashboardPage() {
     )
   }
 
-  const weakestCategory = formatCategoryLabel(data.stats.weakestCategory, locale)
-  const strongestCategory = formatCategoryLabel(data.stats.strongestCategory, locale)
+  const organizationType = (data.organization?.organization_type ?? null) as OrganizationType | null
+  const weakestCategory = formatCategoryLabel(data.stats.weakestCategory, locale, organizationType)
+  const strongestCategory = formatCategoryLabel(data.stats.strongestCategory, locale, organizationType)
   const preferredDomains = data.trainingProfile.preferred_domains ?? []
+  const starterDomains = getSuggestedStarterDomains(
+    organizationType,
+    data.organization?.industry ?? null,
+  )
   const personalSummaryCopy =
     locale === 'he'
       ? {
@@ -261,11 +267,11 @@ export default function DashboardPage() {
             <div className="text-sm text-muted-foreground">
               {preferredDomains.length
                 ? locale === 'he'
-                  ? `התחומים המועדפים שלך: ${formatDomainSummary(preferredDomains, locale)}`
-                  : `Your preferred domains: ${formatDomainSummary(preferredDomains, locale)}`
+                  ? `התחומים המועדפים שלך: ${formatDomainSummary(preferredDomains, locale, 3, organizationType)}`
+                  : `Your preferred domains: ${formatDomainSummary(preferredDomains, locale, 3, organizationType)}`
                 : locale === 'he'
-                  ? `מומלץ להתחיל עם: ${formatDomainSummary([...STARTER_DOMAIN_SUGGESTIONS], locale)}`
-                  : `Suggested starter domains: ${formatDomainSummary([...STARTER_DOMAIN_SUGGESTIONS], locale)}`}
+                  ? `מומלץ להתחיל עם: ${formatDomainSummary(starterDomains, locale, 3, organizationType)}`
+                  : `Suggested starter domains: ${formatDomainSummary(starterDomains, locale, 3, organizationType)}`}
             </div>
             <div>
               <Link href="/training">

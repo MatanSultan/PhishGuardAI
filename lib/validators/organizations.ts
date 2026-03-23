@@ -2,6 +2,7 @@ import { z } from 'zod'
 
 import {
   CHANNELS,
+  ORGANIZATION_TYPES,
   ORGANIZATION_MEMBER_STATUSES,
   ORGANIZATION_ROLES,
   SIMULATION_CATEGORIES,
@@ -18,6 +19,7 @@ function emptyStringToUndefined(value: unknown) {
 
 export const createOrganizationSchema = z.object({
   name: z.string().trim().min(2).max(120),
+  organizationType: z.enum(ORGANIZATION_TYPES).default('other'),
   industry: z.string().trim().max(120).optional().or(z.literal('')),
 })
 

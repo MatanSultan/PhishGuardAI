@@ -5,6 +5,7 @@ import {
   type SupportedLocale,
 } from '@/lib/constants'
 import type { TableRow } from '@/lib/database.types'
+import type { OrganizationSegmentProfile } from '@/lib/organizations/segments'
 import type { ProfileBundle } from '@/lib/profile/service'
 import {
   getWeaknessesByKeys,
@@ -26,6 +27,7 @@ export interface TrainingContext {
   weaknesses: TableRow<'user_weaknesses'>[]
   memories: TableRow<'memory_entries'>[]
   recommendations: TableRow<'training_recommendations'>[]
+  organizationProfile?: OrganizationSegmentProfile | null
 }
 
 interface AttemptSignal {
@@ -246,6 +248,15 @@ export function formatTrainingContext(context: TrainingContext) {
       preferredLanguage: context.bundle.profile.preferred_language,
       fullName: context.bundle.profile.full_name,
     },
+    organization: context.organizationProfile
+      ? {
+          type: context.organizationProfile.type,
+          label: context.organizationProfile.label,
+          description: context.organizationProfile.description,
+          focusTopics: context.organizationProfile.focusTopics,
+          suggestedDomains: context.organizationProfile.suggestedDomains,
+        }
+      : null,
     trainingProfile: context.bundle.trainingProfile,
     weaknesses: context.weaknesses.map((weakness) => ({
       key: weakness.weakness_key,

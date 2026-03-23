@@ -1,6 +1,6 @@
 'use client'
 
-import type { SimulationCategory } from '@/lib/constants'
+import type { OrganizationType, SimulationCategory } from '@/lib/constants'
 import type { Locale } from '@/lib/i18n'
 import { formatCategoryLabel, formatMixedDomainLabel } from '@/lib/presentation'
 import { Button } from '@/components/ui/button'
@@ -11,6 +11,7 @@ interface DomainSelectorProps {
   availableDomains: SimulationCategory[]
   selectedDomains: SimulationCategory[]
   onChange: (domains: SimulationCategory[]) => void
+  organizationType?: OrganizationType | null
   disabled?: boolean
 }
 
@@ -19,6 +20,7 @@ export function DomainSelector({
   availableDomains,
   selectedDomains,
   onChange,
+  organizationType,
   disabled = false,
 }: DomainSelectorProps) {
   const handleMixed = () => {
@@ -65,7 +67,7 @@ export function DomainSelector({
             onClick={() => handleToggle(domain)}
             className={cn(isActive && 'shadow-sm')}
           >
-            {formatCategoryLabel(domain, locale)}
+            {formatCategoryLabel(domain, locale, organizationType)}
           </Button>
         )
       })}

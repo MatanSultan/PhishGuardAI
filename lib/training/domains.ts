@@ -1,8 +1,10 @@
 import {
   SIMULATION_CATEGORIES,
   STARTER_DOMAIN_SUGGESTIONS,
+  type OrganizationType,
   type SimulationCategory,
 } from '@/lib/constants'
+import { getOrganizationSuggestedDomains } from '@/lib/organizations/segments'
 
 export function normalizePreferredDomains(
   domains: readonly (SimulationCategory | string | null | undefined)[] | null | undefined,
@@ -22,6 +24,13 @@ export function normalizePreferredDomains(
   return Array.from(unique)
 }
 
-export function getSuggestedStarterDomains() {
+export function getSuggestedStarterDomains(
+  organizationType?: OrganizationType | null,
+  industry?: string | null,
+) {
+  if (organizationType) {
+    return getOrganizationSuggestedDomains(organizationType, industry)
+  }
+
   return [...STARTER_DOMAIN_SUGGESTIONS] as SimulationCategory[]
 }

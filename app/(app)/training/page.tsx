@@ -19,7 +19,7 @@ import {
 
 import {
   SIMULATION_CATEGORIES,
-  STARTER_DOMAIN_SUGGESTIONS,
+  type OrganizationType,
   type SimulationCategory,
 } from '@/lib/constants'
 import { useLocale } from '@/lib/locale-context'
@@ -31,6 +31,7 @@ import {
   splitSender,
 } from '@/lib/presentation'
 import type { getNextTrainingSimulation, submitTrainingAttempt } from '@/lib/training/service'
+import { getSuggestedStarterDomains } from '@/lib/training/domains'
 import { DomainSelector } from '@/components/domain-selector'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -48,6 +49,10 @@ interface ProfilePayload {
   trainingProfile?: {
     preferred_domains?: SimulationCategory[]
   }
+  organization?: {
+    organization_type: OrganizationType
+    industry: string | null
+  } | null
 }
 
 export default function TrainingPage() {
@@ -68,6 +73,8 @@ export default function TrainingPage() {
   const [sessionProgress, setSessionProgress] = useState({ completed: 0, accuracy: 0 })
   const [trainingData, setTrainingData] = useState<NextTrainingPayload | null>(null)
   const [resultData, setResultData] = useState<SubmitAttemptPayload['result'] | null>(null)
+  const [organizationType, setOrganizationType] = useState<OrganizationType | null>(null)
+  const [organizationIndustry, setOrganizationIndustry] = useState<string | null>(null)
 
   const loadSimulation = useCallback(async (channel: Channel, domains: SimulationCategory[] = []) => {
     setIsLoading(true)
@@ -111,8 +118,18 @@ export default function TrainingPage() {
         return
       }
 
-      if (response.ok && payload?.trainingProfile?.preferred_domains?.length) {
-        setSelectedDomains(payload.trainingProfile.preferred_domains)
+      if (response.ok) {
+        const orgType = payload?.organization?.organization_type ?? null
+        const orgIndustry = payload?.organization?.industry ?? null
+        const preferredDomains = payload?.trainingProfile?.preferred_domains ?? []
+
+        setOrganizationType(orgType)
+        setOrganizationIndustry(orgIndustry)
+        setSelectedDomains(
+          preferredDomains.length
+            ? preferredDomains
+            : getSuggestedStarterDomains(orgType, orgIndustry),
+        )
       }
 
       setPreferencesReady(true)
@@ -255,6 +272,7 @@ export default function TrainingPage() {
     { id: 'whatsapp' as const, label: t.training.channels.whatsapp, icon: MessageSquare },
   ]
   const isFirstTimeUser = (trainingData?.context.trainingProfile.total_attempts ?? 0) === 0
+  const starterDomains = getSuggestedStarterDomains(organizationType, organizationIndustry)
 
   return (
     <div className="container mx-auto px-4 py-8 lg:px-8" dir={dir}>
@@ -298,13 +316,14 @@ export default function TrainingPage() {
             availableDomains={[...SIMULATION_CATEGORIES]}
             selectedDomains={selectedDomains}
             onChange={handleDomainsChange}
+            organizationType={organizationType}
             disabled={isLoading || isSavingDomains}
           />
           <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
             <span>
               {locale === 'he'
-                ? `הבחירה הנוכחית: ${formatDomainSummary(selectedDomains, locale)}`
-                : `Current selection: ${formatDomainSummary(selectedDomains, locale)}`}
+                ? `הבחירה הנוכחית: ${formatDomainSummary(selectedDomains, locale, 3, organizationType)}`
+                : `Current selection: ${formatDomainSummary(selectedDomains, locale, 3, organizationType)}`}
             </span>
             {isSavingDomains ? (
               <span>{locale === 'he' ? 'שומרים העדפה...' : 'Saving preference...'}</span>
@@ -313,7 +332,9 @@ export default function TrainingPage() {
           {isFirstTimeUser ? (
             <div className="rounded-lg border border-dashed border-border p-4">
               <p className="font-medium">
-                {locale === 'he' ? 'התחילו בכמה תחומים עם ערך גבוה' : 'Start with a few high-signal domains'}
+                {locale === 'he'
+                  ? 'התחילו עם התרחישים שהכי רלוונטיים לארגון שלכם'
+                  : 'Start with the scenarios your organization is most likely to see'}
               </p>
               <p className="mt-1 text-sm text-muted-foreground">
                 {locale === 'he'
@@ -321,7 +342,7 @@ export default function TrainingPage() {
                   : 'Delivery, account security, and banking expose the most useful early patterns.'}
               </p>
               <div className="mt-3 flex flex-wrap gap-2">
-                {STARTER_DOMAIN_SUGGESTIONS.map((domain) => (
+                {starterDomains.map((domain) => (
                   <Button
                     key={domain}
                     type="button"
@@ -329,14 +350,14 @@ export default function TrainingPage() {
                     variant="secondary"
                     onClick={() => handleDomainsChange([domain])}
                   >
-                    {formatCategoryLabel(domain, locale)}
+                    {formatCategoryLabel(domain, locale, organizationType)}
                   </Button>
                 ))}
                 <Button
                   type="button"
                   size="sm"
                   variant="outline"
-                  onClick={() => handleDomainsChange([...STARTER_DOMAIN_SUGGESTIONS])}
+                  onClick={() => handleDomainsChange([...starterDomains])}
                 >
                   {locale === 'he' ? 'השתמשו בכל ההמלצות' : 'Use all suggestions'}
                 </Button>
@@ -402,7 +423,7 @@ export default function TrainingPage() {
                         <div className="mt-1 flex items-center gap-2">
                           <span className="text-sm text-muted-foreground">{t.training.simulation.subject}:</span>
                           <span className="font-medium">
-                            {currentSimulation.title || formatCategoryLabel(currentSimulation.category, locale)}
+                            {currentSimulation.title || formatCategoryLabel(currentSimulation.category, locale, organizationType)}
                           </span>
                         </div>
                         {parsedSender.address ? (
@@ -426,7 +447,7 @@ export default function TrainingPage() {
                           {currentSimulation.sender || formatChannelLabel(currentSimulation.channel, locale)}
                         </p>
                         <p className="text-sm text-muted-foreground">
-                          {formatCategoryLabel(currentSimulation.category, locale)}
+                          {formatCategoryLabel(currentSimulation.category, locale, organizationType)}
                         </p>
                       </div>
                     </div>
@@ -676,7 +697,7 @@ export default function TrainingPage() {
                   {locale === 'he' ? 'תחום מיקוד' : 'Focus Domain'}
                 </span>
                 <span className="font-semibold">
-                  {trainingData ? formatCategoryLabel(trainingData.context.selection.category, locale) : '-'}
+                  {trainingData ? formatCategoryLabel(trainingData.context.selection.category, locale, organizationType) : '-'}
                 </span>
               </div>
               <div className="flex items-center justify-between">
@@ -684,7 +705,7 @@ export default function TrainingPage() {
                   {locale === 'he' ? 'תמהיל תחומים' : 'Domain Mix'}
                 </span>
                 <span className="text-right font-semibold">
-                  {formatDomainSummary(selectedDomains, locale, 2)}
+                  {formatDomainSummary(selectedDomains, locale, 2, organizationType)}
                 </span>
               </div>
             </CardContent>

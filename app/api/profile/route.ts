@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 
 import { getAuthenticatedRequestContext, jsonError } from '@/lib/api'
+import { getCurrentOrganizationContext } from '@/lib/organizations/service'
 import { getProfileBundle } from '@/lib/profile/service'
 
 export async function GET() {
@@ -11,8 +12,15 @@ export async function GET() {
       return jsonError('Unauthorized', 401)
     }
 
-    const profile = await getProfileBundle(supabase, user.id)
-    return NextResponse.json(profile)
+    const [profile, organizationContext] = await Promise.all([
+      getProfileBundle(supabase, user.id),
+      getCurrentOrganizationContext(supabase, user.id),
+    ])
+
+    return NextResponse.json({
+      ...profile,
+      organization: organizationContext?.organization ?? null,
+    })
   } catch (error) {
     return jsonError('Unable to load the current profile.', 400, error)
   }

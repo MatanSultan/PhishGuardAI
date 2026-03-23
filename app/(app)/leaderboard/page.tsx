@@ -210,7 +210,7 @@ export default function LeaderboardPage() {
                       <TableCell>{row.streakCount}</TableCell>
                       <TableCell>{row.totalAttempts}</TableCell>
                       <TableCell>{formatDifficultyLabel(row.currentLevel, locale)}</TableCell>
-                      <TableCell>{formatCategoryLabel(row.weakestCategory, locale)}</TableCell>
+                      <TableCell>{formatCategoryLabel(row.weakestCategory, locale, data.organization.organization_type)}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>

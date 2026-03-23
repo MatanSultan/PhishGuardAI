@@ -4,6 +4,7 @@ import type {
   Channel,
   Difficulty,
   OrganizationMemberStatus,
+  OrganizationType,
   SimulationCategory,
 } from '@/lib/constants'
 import type { Database, TableRow } from '@/lib/database.types'
@@ -13,7 +14,11 @@ import {
   type OrganizationContext,
   type OrganizationMemberRecord,
 } from '@/lib/organizations/service'
-import { getIndustrySuggestedDomains } from '@/lib/organizations/industry'
+import {
+  getOrganizationSegmentProfile,
+  getOrganizationSuggestedDomains,
+} from '@/lib/organizations/segments'
+import { formatCategoryLabel, formatChannelLabel } from '@/lib/presentation'
 import { getProfileBundle } from '@/lib/profile/service'
 import { generateOrganizationRiskSummary } from '@/lib/summaries/service'
 
@@ -59,9 +64,10 @@ export interface CompanyRecommendation {
     | 'improve_safe_detection'
     | 'increase_phishing_exposure'
     | 'reengage_low_activity'
-    | 'industry_mix'
+    | 'segment_mix'
   category?: SimulationCategory
   count?: number
+  organizationType?: OrganizationType | null
   industry?: string | null
   domains?: SimulationCategory[]
 }
@@ -444,6 +450,7 @@ function buildCompanyRecommendations(
       kind: 'focus_category',
       category: weakestCategories[0].category,
       count: weakestCategories[0].count,
+      organizationType: context.organization.organization_type,
     })
   }
 
@@ -464,13 +471,17 @@ function buildCompanyRecommendations(
     })
   }
 
-  const industrySuggestedDomains = getIndustrySuggestedDomains(context.organization.industry)
+  const suggestedDomains = getOrganizationSuggestedDomains(
+    context.organization.organization_type,
+    context.organization.industry,
+  )
 
-  if (industrySuggestedDomains.length) {
+  if (suggestedDomains.length) {
     recommendations.push({
-      kind: 'industry_mix',
+      kind: 'segment_mix',
+      organizationType: context.organization.organization_type,
       industry: context.organization.industry,
-      domains: industrySuggestedDomains,
+      domains: suggestedDomains,
     })
   }
 
@@ -783,6 +794,7 @@ export async function getOrganizationDashboardData(
   const aiSummary = await generateOrganizationRiskSummary({
     locale: adminBundle.profile.preferred_language,
     organizationName: context.organization.name,
+    organizationType: context.organization.organization_type,
     industry: context.organization.industry,
     overview,
     weakestCategories,
@@ -816,7 +828,16 @@ export async function getOrganizationReportsData(
   context: OrganizationContext,
   filters: CompanyReportFilters = {},
 ) {
-  const memberRecords = await listOrganizationMembers(supabase, context.organization.id)
+  const [memberRecords, adminBundle] = await Promise.all([
+    listOrganizationMembers(supabase, context.organization.id),
+    getProfileBundle(supabase, context.membership.user_id),
+  ])
+  const locale = adminBundle.profile.preferred_language
+  const organizationProfile = getOrganizationSegmentProfile(
+    context.organization.organization_type,
+    context.organization.industry,
+    locale,
+  )
   const memberMetrics = memberRecords.map(toMemberMetric)
   const attempts = await getOrganizationAttempts(supabase, memberRecords)
   const filteredAttempts = applyAttemptFilters(attempts, filters)
@@ -843,6 +864,84 @@ export async function getOrganizationReportsData(
 
     return right.attempts - left.attempts
   })[0] ?? null
+  const riskiestChannel = [...channelBreakdown].sort((left, right) => {
+    if (left.correctRate !== right.correctRate) {
+      return left.correctRate - right.correctRate
+    }
+
+    return right.attempts - left.attempts
+  })[0] ?? null
+  const lowEngagement = buildLowEngagementMembers(filteredMemberMetrics)
+  const employeesNeedingRefreshers = filteredMemberMetrics.filter(
+    (member) => member.status === 'active' && member.totalAttempts >= 3 && member.accuracyRate < 65,
+  )
+  const newerEmployees = filteredMemberMetrics.filter(
+    (member) => member.status === 'active' && member.totalAttempts > 0 && member.totalAttempts < 3,
+  )
+  const practicalRecommendations = [
+    weakestCategory
+      ? locale === 'he'
+        ? `חזקו את ${formatCategoryLabel(
+            weakestCategory.key,
+            locale,
+            context.organization.organization_type,
+          )} דרך תרחישים כמו ${organizationProfile.focusTopics[0]}.`
+        : `Reinforce ${formatCategoryLabel(
+            weakestCategory.key,
+            locale,
+            context.organization.organization_type,
+          )} with scenarios such as ${organizationProfile.focusTopics[0]}.`
+      : '',
+    riskiestChannel
+      ? locale === 'he'
+        ? `${formatChannelLabel(riskiestChannel.key, locale)} הוא כרגע הערוץ הכי מסוכן. הריצו עוד תרגול סביב ${organizationProfile.focusTopics[1] ?? organizationProfile.focusTopics[0]}.`
+        : `${formatChannelLabel(riskiestChannel.key, locale)} is the riskiest channel right now. Run more practice around ${organizationProfile.focusTopics[1] ?? organizationProfile.focusTopics[0]}.`
+      : '',
+    employeesNeedingRefreshers.length
+      ? locale === 'he'
+        ? `${employeesNeedingRefreshers.length} עובדים עם דיוק נמוך צריכים רענון קצר וממוקד השבוע.`
+        : `${employeesNeedingRefreshers.length} employees with lower accuracy should get a short targeted refresher this week.`
+      : '',
+    lowEngagement.length
+      ? locale === 'he'
+        ? `${lowEngagement.length} עובדים כמעט לא התאמנו לאחרונה. כדאי לשלוח להם חיזוק פשוט ולתאם סבב חזרה.`
+        : `${lowEngagement.length} employees have little recent activity. Send a simple follow-up and restart their training cadence.`
+      : '',
+    locale === 'he'
+      ? `לסבב הבא, התחילו עם ${organizationProfile.suggestedDomains
+          .slice(0, 3)
+          .map((domain) =>
+            formatCategoryLabel(domain, locale, context.organization.organization_type),
+          )
+          .join(', ')}.`
+      : `For the next cycle, start with ${organizationProfile.suggestedDomains
+          .slice(0, 3)
+          .map((domain) =>
+            formatCategoryLabel(domain, locale, context.organization.organization_type),
+          )
+          .join(', ')}.`,
+  ].filter(Boolean)
+  const employeeGroupsNeedingRefreshers = [
+    employeesNeedingRefreshers.length
+      ? locale === 'he'
+        ? `עובדים עם פחות מ-65% דיוק: ${employeesNeedingRefreshers.length}`
+        : `Employees below 65% accuracy: ${employeesNeedingRefreshers.length}`
+      : '',
+    lowEngagement.length
+      ? locale === 'he'
+        ? `עובדים בלי פעילות עדכנית: ${lowEngagement.length}`
+        : `Employees with low recent activity: ${lowEngagement.length}`
+      : '',
+    newerEmployees.length
+      ? locale === 'he'
+        ? `עובדים שצריכים קו בסיס ראשוני: ${newerEmployees.length}`
+        : `Employees still building a baseline: ${newerEmployees.length}`
+      : '',
+  ].filter(Boolean)
+  const plainLanguageSummary =
+    locale === 'he'
+      ? `${organizationProfile.label}: הדוח הזה שם דגש על ${weakestCategory ? formatCategoryLabel(weakestCategory.key, locale, context.organization.organization_type) : organizationProfile.focusTopics[0]} ועל צעדים מעשיים למנהלים לא טכניים.`
+      : `${organizationProfile.label}: this report keeps the focus on ${weakestCategory ? formatCategoryLabel(weakestCategory.key, locale, context.organization.organization_type) : organizationProfile.focusTopics[0]} and on practical next steps for non-technical managers.`
 
   return {
     organization: context.organization,
@@ -870,8 +969,11 @@ export async function getOrganizationReportsData(
     scoreTrend: buildTrend(filteredAttempts),
     weakestCategory,
     strongestCategory,
+    plainLanguageSummary,
+    practicalRecommendations,
+    employeeGroupsNeedingRefreshers,
     mostImproved: buildMostImprovedEmployees(filteredAttempts, filteredMemberMetrics),
-    lowEngagement: buildLowEngagementMembers(filteredMemberMetrics),
+    lowEngagement,
     recentActivity: buildRecentActivity(filteredAttempts, filteredMemberMetrics),
   }
 }

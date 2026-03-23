@@ -4,8 +4,10 @@ import {
   SIMULATION_CATEGORIES,
   type Channel,
   type Difficulty,
+  type OrganizationType,
   type SimulationCategory,
 } from '@/lib/constants'
+import { getOrganizationSegmentProfile } from '@/lib/organizations/segments'
 import { formatCategoryLabel } from '@/lib/presentation'
 import type { ProfileBundle } from '@/lib/profile/service'
 import { normalizePreferredDomains } from '@/lib/training/domains'
@@ -19,6 +21,8 @@ interface PersonalizationContext {
     category: string | null
     score: number
   }>
+  organizationType?: OrganizationType | null
+  organizationIndustry?: string | null
   preferredDomains?: SimulationCategory[]
 }
 
@@ -71,6 +75,14 @@ function categoryIsInPool(
 export function buildPersonalizedSelection(context: PersonalizationContext): PersonalizedSelection {
   const { bundle, recentAttempts, weaknesses } = context
   const locale = bundle.profile.preferred_language
+  const organizationProfile =
+    context.organizationType
+      ? getOrganizationSegmentProfile(
+          context.organizationType,
+          context.organizationIndustry,
+          locale,
+        )
+      : null
   const recentWindow = recentAttempts.slice(0, 5)
   const recentAccuracy =
     recentWindow.length > 0
@@ -85,25 +97,29 @@ export function buildPersonalizedSelection(context: PersonalizationContext): Per
     difficulty = nextDifficulty(difficulty, 'up')
     reasons.push(
       locale === 'he'
-        ? 'רמת הדיוק האחרונה גבוהה, ולכן אפשר להעלות את רמת הקושי בהדרגה.'
+        ? 'הדיוק האחרון חזק, ולכן אפשר להעלות מעט את רמת הקושי.'
         : 'Recent accuracy is strong, so difficulty can increase gradually.',
     )
   } else if (recentWindow.length >= 3 && recentAccuracy <= 0.4) {
     difficulty = nextDifficulty(difficulty, 'down')
     reasons.push(
       locale === 'he'
-        ? 'רצף הטעויות האחרון מצביע על צורך ברמת קושי נגישה יותר.'
+        ? 'הרצף האחרון מצביע על צורך בתרגול נגיש יותר לפני שמעלים קושי.'
         : 'Recent misses suggest the difficulty should stay manageable.',
     )
   }
 
-  const selectedDomains = normalizePreferredDomains(
+  const explicitDomains = normalizePreferredDomains(
     context.preferredDomains ?? bundle.trainingProfile.preferred_domains,
   )
-  const isMixed = selectedDomains.length === 0
-  const variationPool = SIMULATION_CATEGORIES.filter((category) => !selectedDomains.includes(category))
+  const effectiveDomains =
+    explicitDomains.length === 0 && organizationProfile?.suggestedDomains.length
+      ? organizationProfile.suggestedDomains
+      : explicitDomains
+  const isMixed = effectiveDomains.length === 0
+  const variationPool = SIMULATION_CATEGORIES.filter((category) => !effectiveDomains.includes(category))
   const shouldVaryOutsideSelection =
-    selectedDomains.length > 0 &&
+    effectiveDomains.length > 0 &&
     variationPool.length > 0 &&
     bundle.trainingProfile.total_attempts > 0 &&
     bundle.trainingProfile.total_attempts % 5 === 4
@@ -111,8 +127,8 @@ export function buildPersonalizedSelection(context: PersonalizationContext): Per
   const activeDomainPool =
     shouldVaryOutsideSelection
       ? variationPool
-      : selectedDomains.length
-        ? selectedDomains
+      : effectiveDomains.length
+        ? effectiveDomains
         : [...SIMULATION_CATEGORIES]
 
   const strongestWeakness = [...weaknesses].sort((left, right) => right.score - left.score)[0]
@@ -141,16 +157,19 @@ export function buildPersonalizedSelection(context: PersonalizationContext): Per
         .map((attempt) => attempt.simulation?.channel)
         .filter((value): value is Channel => Boolean(value)),
     ) ??
-    CHANNELS[bundle.trainingProfile.total_attempts % CHANNELS.length]
+    (organizationProfile?.priorityChannels[
+      bundle.trainingProfile.total_attempts % organizationProfile.priorityChannels.length
+    ] ??
+      CHANNELS[bundle.trainingProfile.total_attempts % CHANNELS.length])
 
   if (strongestWeakness?.weakness_key === 'delivery_overtrust') {
-    category = selectedDomains.length && !selectedDomains.includes('delivery') ? category : 'delivery'
+    category = effectiveDomains.length && !effectiveDomains.includes('delivery') ? category : 'delivery'
     focusTags.push('delivery skepticism')
   }
 
   if (strongestWeakness?.weakness_key === 'account_security_overtrust') {
     category =
-      selectedDomains.length && !selectedDomains.includes('account_security')
+      effectiveDomains.length && !effectiveDomains.includes('account_security')
         ? category
         : 'account_security'
     focusTags.push('legitimate security notices')
@@ -168,20 +187,30 @@ export function buildPersonalizedSelection(context: PersonalizationContext): Per
     focusTags.push('sender authenticity')
   }
 
-  if (selectedDomains.length) {
+  if (explicitDomains.length) {
     reasons.push(
       locale === 'he'
-        ? `תחומי האימון שנבחרו מקבלים עדיפות: ${selectedDomains
-            .map((domain) => formatCategoryLabel(domain, locale))
+        ? `התחומים שבחרתם מקבלים עדיפות: ${explicitDomains
+            .map((domain) => formatCategoryLabel(domain, locale, context.organizationType))
             .join(', ')}.`
-        : `Your selected training domains are prioritized: ${selectedDomains
-            .map((domain) => formatCategoryLabel(domain, locale))
+        : `Your selected training domains are prioritized: ${explicitDomains
+            .map((domain) => formatCategoryLabel(domain, locale, context.organizationType))
+            .join(', ')}.`,
+    )
+  } else if (organizationProfile?.suggestedDomains.length) {
+    reasons.push(
+      locale === 'he'
+        ? `ברירות המחדל של הארגון פעילות: ${organizationProfile.suggestedDomains
+            .map((domain) => formatCategoryLabel(domain, locale, context.organizationType))
+            .join(', ')}.`
+        : `Organization starter domains are active: ${organizationProfile.suggestedDomains
+            .map((domain) => formatCategoryLabel(domain, locale, context.organizationType))
             .join(', ')}.`,
     )
   } else {
     reasons.push(
       locale === 'he'
-        ? 'מצב מעורב פעיל, לכן המערכת תשלב תחומים שונים כדי לשמור על גיוון.'
+        ? 'מצב מעורב פעיל, ולכן המערכת תשלב תחומים שונים כדי לשמור על גיוון.'
         : 'Mixed mode is active, so the system will rotate across domains for variety.',
     )
   }
@@ -194,10 +223,18 @@ export function buildPersonalizedSelection(context: PersonalizationContext): Per
     )
   }
 
+  if (organizationProfile?.adminHint && bundle.trainingProfile.total_attempts === 0) {
+    reasons.push(
+      locale === 'he'
+        ? `לארגון מהסוג הזה כדאי להתמקד קודם ב-${organizationProfile.focusTopics[0]}.`
+        : `For this kind of organization, start with ${organizationProfile.focusTopics[0]}.`,
+    )
+  }
+
   reasons.push(
     locale === 'he'
-      ? `תחום המיקוד הנוכחי הוא ${formatCategoryLabel(category, locale)}.`
-      : `Current priority domain is ${formatCategoryLabel(category, locale)}.`,
+      ? `תחום המיקוד הנוכחי הוא ${formatCategoryLabel(category, locale, context.organizationType)}.`
+      : `Current priority domain is ${formatCategoryLabel(category, locale, context.organizationType)}.`,
   )
   reasons.push(
     locale === 'he'
@@ -212,7 +249,8 @@ export function buildPersonalizedSelection(context: PersonalizationContext): Per
     category,
     focusTags,
     reasons,
-    selectedDomains,
+    selectedDomains: effectiveDomains,
     isMixed,
   }
 }
+

@@ -33,6 +33,17 @@ export const STARTER_DOMAIN_SUGGESTIONS = [
 export const MEMORY_TYPES = ['summary', 'weakness', 'pattern', 'improvement'] as const
 export type MemoryType = (typeof MEMORY_TYPES)[number]
 
+export const ORGANIZATION_TYPES = [
+  'nursing_home',
+  'education',
+  'nonprofit',
+  'municipality',
+  'smb',
+  'other',
+] as const
+export type OrganizationType = (typeof ORGANIZATION_TYPES)[number]
+export const DEFAULT_ORGANIZATION_TYPE: OrganizationType = 'other'
+
 export const ORGANIZATION_ROLES = ['member', 'admin'] as const
 export type OrganizationRole = (typeof ORGANIZATION_ROLES)[number]
 

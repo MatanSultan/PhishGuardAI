@@ -18,6 +18,11 @@ import {
   formatTrainingContext,
   getTrainingContext,
 } from '@/lib/memory/service'
+import { getCurrentOrganizationContext } from '@/lib/organizations/service'
+import {
+  getOrganizationSegmentProfile,
+  getOrganizationSimulationKeywords,
+} from '@/lib/organizations/segments'
 import { getProfileBundle } from '@/lib/profile/service'
 import { generatePersonalImprovementSummary } from '@/lib/summaries/service'
 import { buildPersonalizedSelection } from '@/lib/training/personalization'
@@ -556,9 +561,47 @@ function buildFallbackRecommendation(
 function chooseCandidateSimulation(
   candidates: TableRow<'simulations'>[],
   recentAttempts: AttemptWithSimulation[],
+  organizationType?: string | null,
 ) {
   const recentIds = new Set(recentAttempts.map((attempt) => attempt.simulation_id))
-  return candidates.find((candidate) => !recentIds.has(candidate.id)) ?? candidates[0] ?? null
+  const candidatePool = candidates.filter((candidate) => !recentIds.has(candidate.id))
+
+  if (!candidatePool.length) {
+    return candidates[0] ?? null
+  }
+
+  if (!organizationType) {
+    return candidatePool[0] ?? null
+  }
+
+  const keywords = getOrganizationSimulationKeywords(organizationType)
+
+  return (
+    [...candidatePool].sort((left, right) => {
+      const leftText = [left.title, left.sender, left.content, left.explanation]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase()
+      const rightText = [right.title, right.sender, right.content, right.explanation]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase()
+      const leftScore = keywords.reduce(
+        (score, keyword) => score + (leftText.includes(keyword) ? 1 : 0),
+        0,
+      )
+      const rightScore = keywords.reduce(
+        (score, keyword) => score + (rightText.includes(keyword) ? 1 : 0),
+        0,
+      )
+
+      if (leftScore !== rightScore) {
+        return rightScore - leftScore
+      }
+
+      return right.created_at.localeCompare(left.created_at)
+    })[0] ?? null
+  )
 }
 
 export async function getNextTrainingSimulation(
@@ -566,14 +609,30 @@ export async function getNextTrainingSimulation(
   userId: string,
   input: StartTrainingInput = {},
 ) {
-  const bundle = await getProfileBundle(supabase, userId)
+  const [bundle, organizationContext] = await Promise.all([
+    getProfileBundle(supabase, userId),
+    getCurrentOrganizationContext(supabase, userId),
+  ])
+  const organizationProfile = organizationContext
+    ? getOrganizationSegmentProfile(
+        organizationContext.organization.organization_type,
+        organizationContext.organization.industry,
+        bundle.profile.preferred_language,
+      )
+    : null
   const context = await getTrainingContext(supabase, userId, bundle)
   const personalized = buildPersonalizedSelection({
     bundle,
     recentAttempts: context.recentAttempts,
     weaknesses: context.weaknesses,
+    organizationType: organizationContext?.organization.organization_type ?? null,
+    organizationIndustry: organizationContext?.organization.industry ?? null,
     preferredDomains: input.preferredDomains,
   })
+  const trainingContext = {
+    ...context,
+    organizationProfile,
+  }
 
   const selection = {
     ...personalized,
@@ -591,7 +650,11 @@ export async function getNextTrainingSimulation(
     excludeIds: context.recentAttempts.map((attempt) => attempt.simulation_id),
   })
 
-  const reusableCandidate = chooseCandidateSimulation(exactCandidates, context.recentAttempts)
+  const reusableCandidate = chooseCandidateSimulation(
+    exactCandidates,
+    context.recentAttempts,
+    organizationContext?.organization.organization_type,
+  )
 
   let simulation = reusableCandidate
 
@@ -599,7 +662,7 @@ export async function getNextTrainingSimulation(
     const generatedSimulation = await generateSimulationWithGroq(
       selection.locale,
       selection,
-      formatTrainingContext(context),
+      formatTrainingContext(trainingContext),
     ).catch(() => null)
     const groqSimulation =
       generatedSimulation && isAlignedGeneratedSimulation(generatedSimulation, selection)
@@ -636,6 +699,7 @@ export async function getNextTrainingSimulation(
       trainingProfile: bundle.trainingProfile,
       weaknesses: context.weaknesses,
       recommendations: context.recommendations,
+      organization: organizationContext?.organization ?? null,
       selection,
     },
   }
@@ -646,10 +710,24 @@ export async function submitTrainingAttempt(
   userId: string,
   input: SubmitAttemptInput,
 ) {
-  const bundle = await getProfileBundle(supabase, userId)
+  const [bundle, organizationContext] = await Promise.all([
+    getProfileBundle(supabase, userId),
+    getCurrentOrganizationContext(supabase, userId),
+  ])
+  const organizationProfile = organizationContext
+    ? getOrganizationSegmentProfile(
+        organizationContext.organization.organization_type,
+        organizationContext.organization.industry,
+        bundle.profile.preferred_language,
+      )
+    : null
   const simulation = await getSimulationById(supabase, input.simulationId)
   const isCorrect = input.userAnswer === simulation.is_phishing
   const context = await getTrainingContext(supabase, userId, bundle)
+  const trainingContext = {
+    ...context,
+    organizationProfile,
+  }
 
   const feedbackPayload = {
     locale: bundle.profile.preferred_language,
@@ -657,7 +735,7 @@ export async function submitTrainingAttempt(
     userAnswer: input.userAnswer,
     isCorrect,
     userReason: input.userReason ?? '',
-    context: formatTrainingContext(context),
+    context: formatTrainingContext(trainingContext),
   }
 
   const feedback =
@@ -684,7 +762,7 @@ export async function submitTrainingAttempt(
       confidence: input.confidence ?? null,
       userReason: input.userReason ?? '',
     },
-    context: formatTrainingContext(context),
+    context: formatTrainingContext(trainingContext),
   }
 
   const memoryUpdate =
@@ -698,7 +776,7 @@ export async function submitTrainingAttempt(
       simulation,
       feedback,
       memoryUpdate,
-      context: formatTrainingContext(context),
+      context: formatTrainingContext(trainingContext),
     }).catch(() => null)) ??
     buildFallbackRecommendation(bundle.profile.preferred_language, simulation, feedback)
 
@@ -739,7 +817,10 @@ export async function submitTrainingAttempt(
 }
 
 export async function getDashboardData(supabase: AppSupabaseClient, userId: string) {
-  const bundle = await getProfileBundle(supabase, userId)
+  const [bundle, organizationContext] = await Promise.all([
+    getProfileBundle(supabase, userId),
+    getCurrentOrganizationContext(supabase, userId),
+  ])
   const [attempts, recommendations, weaknesses] = await Promise.all([
     getAllAttemptsWithSimulations(supabase, userId),
     getRecommendations(supabase, userId, 5),
@@ -752,6 +833,8 @@ export async function getDashboardData(supabase: AppSupabaseClient, userId: stri
       fullName: bundle.profile.full_name,
       email: bundle.profile.email,
     },
+    organizationName: organizationContext?.organization.name ?? null,
+    organizationType: organizationContext?.organization.organization_type ?? null,
     stats: summary.stats,
     preferredDomains: bundle.trainingProfile.preferred_domains ?? [],
     weaknesses,
@@ -761,6 +844,7 @@ export async function getDashboardData(supabase: AppSupabaseClient, userId: stri
 
   return {
     ...summary,
+    organization: organizationContext?.organization ?? null,
     aiSummary,
   }
 }

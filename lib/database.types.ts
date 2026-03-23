@@ -3,6 +3,7 @@ import type {
   Difficulty,
   MemoryType,
   OrganizationMemberStatus,
+  OrganizationType,
   SimulationCategory,
   SupportedLocale,
   TeamInviteStatus,
@@ -133,6 +134,7 @@ export interface Database {
           id: string
           industry: string | null
           name: string
+          organization_type: OrganizationType
           slug: string
         }
         Insert: {
@@ -141,6 +143,7 @@ export interface Database {
           id?: string
           industry?: string | null
           name: string
+          organization_type?: OrganizationType
           slug: string
         }
         Update: {
@@ -149,6 +152,7 @@ export interface Database {
           id?: string
           industry?: string | null
           name?: string
+          organization_type?: OrganizationType
           slug?: string
         }
         Relationships: NoRelationships
@@ -419,6 +423,7 @@ export interface Database {
           org_industry?: string | null
           org_name: string
           org_slug: string
+          org_type?: string | null
         }
         Returns: Json
       }

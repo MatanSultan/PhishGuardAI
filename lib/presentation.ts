@@ -1,14 +1,20 @@
-import type { Channel, Difficulty, SimulationCategory } from '@/lib/constants'
+import type {
+  Channel,
+  Difficulty,
+  OrganizationType,
+  SimulationCategory,
+} from '@/lib/constants'
 import type { Locale } from '@/lib/i18n'
+import { getOrganizationCategoryLabelOverride } from '@/lib/organizations/segments'
 
 const categoryLabels: Record<SimulationCategory, { en: string; he: string }> = {
-  bank: { en: 'Banking & Finance', he: 'בנקאות ופיננסים' },
-  delivery: { en: 'Delivery & Packages', he: 'משלוחים וחבילות' },
+  bank: { en: 'Invoices & Payments', he: 'חשבוניות ותשלומים' },
+  delivery: { en: 'Delivery & Courier', he: 'משלוחים ושליחים' },
   account_security: { en: 'Account Security', he: 'אבטחת חשבון' },
-  workplace: { en: 'Workplace & Internal', he: 'עבודה ותקשורת פנימית' },
-  social: { en: 'Social Media', he: 'מדיה חברתית' },
-  shopping: { en: 'E-commerce & Shopping', he: 'מסחר מקוון וקניות' },
-  government: { en: 'Government & Official', he: 'ממשל והודעות רשמיות' },
+  workplace: { en: 'Internal Communications', he: 'תקשורת פנימית' },
+  social: { en: 'WhatsApp & Social Messaging', he: 'WhatsApp והודעות מיידיות' },
+  shopping: { en: 'Vendors & External Requests', he: 'ספקים ובקשות חיצוניות' },
+  government: { en: 'Official & Government Notices', he: 'הודעות רשמיות וממשלתיות' },
 }
 
 const difficultyLabels: Record<Difficulty, { en: string; he: string }> = {
@@ -21,10 +27,10 @@ const weaknessLabels: Record<string, { en: string; he: string }> = {
   urgency_cues: { en: 'Urgency Cues', he: 'סימני דחיפות' },
   fake_domain_detection: { en: 'Domain Verification', he: 'אימות דומיין' },
   suspicious_sender_detection: { en: 'Sender Verification', he: 'אימות שולח' },
-  delivery_overtrust: { en: 'Delivery Over-Trust', he: 'אמון יתר במשלוחים' },
+  delivery_overtrust: { en: 'Delivery Over-Trust', he: 'אמון יתר בהודעות משלוח' },
   account_security_overtrust: {
     en: 'Legitimate Security Notices',
-    he: 'חשד כלפי הודעות אבטחה לגיטימיות',
+    he: 'חשד יתר כלפי הודעות אבטחה לגיטימיות',
   },
   hebrew_detection_gap: { en: 'Hebrew Detection', he: 'זיהוי בעברית' },
   english_detection_gap: { en: 'English Detection', he: 'זיהוי באנגלית' },
@@ -33,9 +39,25 @@ const weaknessLabels: Record<string, { en: string; he: string }> = {
   channel_whatsapp: { en: 'WhatsApp Scenarios', he: 'תרחישי WhatsApp' },
 }
 
-export function formatCategoryLabel(category: string | null | undefined, locale: Locale) {
+export function formatCategoryLabel(
+  category: string | null | undefined,
+  locale: Locale,
+  organizationType?: OrganizationType | null,
+) {
   if (!category || !(category in categoryLabels)) {
     return locale === 'he' ? 'לא זמין' : 'Not available'
+  }
+
+  const override = organizationType
+    ? getOrganizationCategoryLabelOverride(
+        organizationType,
+        category as SimulationCategory,
+        locale,
+      )
+    : null
+
+  if (override) {
+    return override
   }
 
   return categoryLabels[category as SimulationCategory][locale]
@@ -58,7 +80,7 @@ export function formatChannelLabel(channel: Channel, locale: Locale) {
     return 'SMS'
   }
 
-  return locale === 'he' ? 'וואטסאפ' : 'WhatsApp'
+  return locale === 'he' ? 'WhatsApp' : 'WhatsApp'
 }
 
 export function formatMixedDomainLabel(locale: Locale) {
@@ -69,13 +91,14 @@ export function formatDomainSummary(
   domains: string[] | null | undefined,
   locale: Locale,
   maxItems = 3,
+  organizationType?: OrganizationType | null,
 ) {
   if (!domains?.length) {
     return formatMixedDomainLabel(locale)
   }
 
   const labels = domains
-    .map((domain) => formatCategoryLabel(domain, locale))
+    .map((domain) => formatCategoryLabel(domain, locale, organizationType))
     .filter(Boolean)
 
   if (labels.length <= maxItems) {
@@ -137,3 +160,4 @@ export function splitSender(sender: string | null | undefined) {
     address: match[2].trim(),
   }
 }
+

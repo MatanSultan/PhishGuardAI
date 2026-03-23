@@ -21,6 +21,10 @@ import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YA
 
 import { useLocale } from '@/lib/locale-context'
 import {
+  getOrganizationSegmentLabel,
+  getOrganizationSegmentProfile,
+} from '@/lib/organizations/segments'
+import {
   formatCategoryLabel,
   formatDifficultyLabel,
   formatRelativeTimestamp,
@@ -80,6 +84,7 @@ interface InvitesPayload {
 function getAttentionFlagCopy(
   flag: CompanyAttentionFlag,
   locale: 'en' | 'he',
+  organizationType?: string | null,
 ) {
   const parts: string[] = []
 
@@ -106,8 +111,8 @@ function getAttentionFlagCopy(
   if (flag.reasons.includes('repeated_category_failure') && flag.repeatedCategory) {
     parts.push(
       locale === 'he'
-        ? `כשל חוזר ב-${formatCategoryLabel(flag.repeatedCategory, locale)}`
-        : `repeated misses in ${formatCategoryLabel(flag.repeatedCategory, locale)}`,
+        ? `כשל חוזר ב-${formatCategoryLabel(flag.repeatedCategory, locale, organizationType as never)}`
+        : `repeated misses in ${formatCategoryLabel(flag.repeatedCategory, locale, organizationType as never)}`,
     )
   }
 
@@ -117,13 +122,14 @@ function getAttentionFlagCopy(
 function getRecommendationCopy(
   recommendation: CompanyRecommendation,
   locale: 'en' | 'he',
+  organizationType?: string | null,
 ) {
   if (recommendation.kind === 'focus_category') {
     return {
       title:
         locale === 'he'
-          ? `תעדפו תרגול ב-${formatCategoryLabel(recommendation.category, locale)}`
-          : `Prioritize ${formatCategoryLabel(recommendation.category, locale)} scenarios next`,
+          ? `תעדפו תרגול ב-${formatCategoryLabel(recommendation.category, locale, (recommendation.organizationType ?? organizationType) as never)}`
+          : `Prioritize ${formatCategoryLabel(recommendation.category, locale, (recommendation.organizationType ?? organizationType) as never)} scenarios next`,
       reason:
         locale === 'he'
           ? `${recommendation.count ?? 0} עובדים סימנו את התחום הזה כאזור חלש.`
@@ -174,14 +180,14 @@ function getRecommendationCopy(
     title:
       locale === 'he'
         ? `השתמשו בתמהיל רלוונטי ל-${recommendation.industry}`
-        : `Use an industry-relevant mix for ${recommendation.industry}`,
+        : `Use a segment-relevant mix for ${getOrganizationSegmentLabel(recommendation.organizationType ?? organizationType, locale)}`,
     reason:
       locale === 'he'
         ? `תמהיל מומלץ: ${(recommendation.domains ?? [])
-            .map((domain) => formatCategoryLabel(domain, locale))
+            .map((domain) => formatCategoryLabel(domain, locale, (recommendation.organizationType ?? organizationType) as never))
             .join(', ')}.`
         : `Recommended mix: ${(recommendation.domains ?? [])
-            .map((domain) => formatCategoryLabel(domain, locale))
+            .map((domain) => formatCategoryLabel(domain, locale, (recommendation.organizationType ?? organizationType) as never))
             .join(', ')}.`,
   }
 }
@@ -589,6 +595,11 @@ export default function AdminPage() {
   const adminCount = members.filter(
     (member) => member.membership.role === 'admin' && member.membership.status === 'active',
   ).length
+  const organizationProfile = getOrganizationSegmentProfile(
+    data.organization.organization_type,
+    data.organization.industry,
+    locale,
+  )
 
   return (
     <div className="container mx-auto space-y-6 px-4 py-8 lg:px-8" dir={dir}>
@@ -597,6 +608,7 @@ export default function AdminPage() {
           <div className="mb-2 flex items-center gap-2 text-sm text-muted-foreground">
             <Building2 className="h-4 w-4" />
             <span>{data.organization.name}</span>
+            <span>• {getOrganizationSegmentLabel(data.organization.organization_type, locale)}</span>
             {data.organization.industry ? <span>• {data.organization.industry}</span> : null}
           </div>
           <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
@@ -640,6 +652,20 @@ export default function AdminPage() {
           </CardContent>
         </Card>
       ) : null}
+
+      <Card>
+        <CardHeader>
+          <CardTitle>{locale === 'he' ? 'מוקד הסיכון לארגון הזה' : 'What matters for this segment'}</CardTitle>
+          <CardDescription>{organizationProfile.adminHint}</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {organizationProfile.focusTopics.slice(0, 3).map((topic) => (
+            <div key={topic} className="rounded-lg border border-border p-3 text-sm">
+              {topic}
+            </div>
+          ))}
+        </CardContent>
+      </Card>
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
         <Card>
@@ -751,7 +777,7 @@ export default function AdminPage() {
                   </div>
                   <p className="text-sm text-muted-foreground">{flag.email}</p>
                   <p className="mt-2 text-sm text-muted-foreground">
-                    {getAttentionFlagCopy(flag, locale)}
+                    {getAttentionFlagCopy(flag, locale, data.organization.organization_type)}
                   </p>
                 </div>
                 <div className="text-sm font-medium">
@@ -1067,7 +1093,11 @@ export default function AdminPage() {
           <CardContent className="space-y-4">
             {hasRecommendations ? (
               data.companyRecommendations.map((recommendation, index) => {
-                const copy = getRecommendationCopy(recommendation, locale)
+                const copy = getRecommendationCopy(
+                  recommendation,
+                  locale,
+                  data.organization.organization_type,
+                )
 
                 return (
                   <div key={index} className="rounded-lg border border-border p-4">
@@ -1097,7 +1127,7 @@ export default function AdminPage() {
             {hasWeakCategories ? (
               data.weakestCategories.map((item) => (
                 <div key={item.category} className="flex items-center justify-between rounded-lg border border-border p-3">
-                  <span>{formatCategoryLabel(item.category, locale)}</span>
+                  <span>{formatCategoryLabel(item.category, locale, data.organization.organization_type)}</span>
                   <span className="font-semibold">{item.count}</span>
                 </div>
               ))
@@ -1118,7 +1148,7 @@ export default function AdminPage() {
             {hasStrongCategories ? (
               data.strongestCategories.map((item) => (
                 <div key={item.category} className="flex items-center justify-between rounded-lg border border-border p-3">
-                  <span>{formatCategoryLabel(item.category, locale)}</span>
+                  <span>{formatCategoryLabel(item.category, locale, data.organization.organization_type)}</span>
                   <span className="font-semibold">{item.count}</span>
                 </div>
               ))
@@ -1220,10 +1250,10 @@ export default function AdminPage() {
               simulationPreview.map((simulation) => (
                 <div key={simulation.id} className="rounded-lg border border-border p-3 text-sm">
                   <p className="font-medium">
-                    {simulation.title || formatCategoryLabel(simulation.category, locale)}
+                    {simulation.title || formatCategoryLabel(simulation.category, locale, data.organization.organization_type)}
                   </p>
                   <p className="text-muted-foreground">
-                    {formatDifficultyLabel(simulation.difficulty, locale)} • {formatCategoryLabel(simulation.category, locale)}
+                    {formatDifficultyLabel(simulation.difficulty, locale)} • {formatCategoryLabel(simulation.category, locale, data.organization.organization_type)}
                   </p>
                 </div>
               ))

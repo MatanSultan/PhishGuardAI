@@ -11,11 +11,28 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { Skeleton } from '@/components/ui/skeleton'
 import { formatOrganizationRoleLabel, getCompanyCopy } from '@/lib/company-copy'
-import { SIMULATION_CATEGORIES, type SimulationCategory } from '@/lib/constants'
+import {
+  ORGANIZATION_TYPES,
+  type OrganizationType,
+  SIMULATION_CATEGORIES,
+  type SimulationCategory,
+} from '@/lib/constants'
 import { useLocale } from '@/lib/locale-context'
+import {
+  getOrganizationSegmentLabel,
+  getOrganizationSegmentProfile,
+} from '@/lib/organizations/segments'
 import { formatDifficultyLabel, formatDomainSummary } from '@/lib/presentation'
+import { getSuggestedStarterDomains } from '@/lib/training/domains'
 
 interface ProfilePayload {
   profile: {
@@ -37,6 +54,7 @@ interface OrganizationPayload {
     name: string
     slug: string
     industry: string | null
+    organization_type: OrganizationType
   } | null
   membership: {
     role: 'member' | 'admin'
@@ -55,6 +73,7 @@ export default function SettingsPage() {
   const [organizationData, setOrganizationData] = useState<OrganizationPayload | null>(null)
   const [selectedDomains, setSelectedDomains] = useState<SimulationCategory[]>([])
   const [organizationName, setOrganizationName] = useState('')
+  const [organizationType, setOrganizationType] = useState<OrganizationType>('other')
   const [organizationIndustry, setOrganizationIndustry] = useState('')
   const [isLoading, setIsLoading] = useState(true)
   const [isSavingDomains, setIsSavingDomains] = useState(false)
@@ -95,8 +114,17 @@ export default function SettingsPage() {
           return
         }
 
+        const preferredDomains = profilePayload.trainingProfile.preferred_domains ?? []
+        const defaultDomains =
+          preferredDomains.length > 0
+            ? preferredDomains
+            : getSuggestedStarterDomains(
+                organizationPayload?.organization?.organization_type,
+                organizationPayload?.organization?.industry,
+              )
+
         setProfileData(profilePayload)
-        setSelectedDomains(profilePayload.trainingProfile.preferred_domains ?? [])
+        setSelectedDomains(defaultDomains)
         setOrganizationData(organizationPayload)
         setIsLoading(false)
       } catch {
@@ -178,6 +206,7 @@ export default function SettingsPage() {
         },
         body: JSON.stringify({
           name: organizationName,
+          organizationType,
           industry: organizationIndustry,
         }),
       })
@@ -229,6 +258,13 @@ export default function SettingsPage() {
       </div>
     )
   }
+
+  const activeOrganizationType = organizationData.organization?.organization_type ?? organizationType
+  const activeSegmentProfile = getOrganizationSegmentProfile(
+    activeOrganizationType,
+    organizationData.organization?.industry ?? organizationIndustry,
+    locale,
+  )
 
   return (
     <div className="container mx-auto space-y-6 px-4 py-8 lg:px-8" dir={dir}>
@@ -313,6 +349,7 @@ export default function SettingsPage() {
             availableDomains={[...SIMULATION_CATEGORIES]}
             selectedDomains={selectedDomains}
             onChange={persistDomains}
+            organizationType={activeOrganizationType}
             disabled={isSavingDomains}
           />
           <p className="text-sm text-muted-foreground">
@@ -336,7 +373,7 @@ export default function SettingsPage() {
         <CardContent className="space-y-4">
           {organizationData.organization ? (
             <>
-              <div className="grid gap-4 sm:grid-cols-3">
+              <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
                 <div className="rounded-lg border border-border p-4">
                   <div className="mb-2 flex items-center gap-2 text-muted-foreground">
                     <Building2 className="h-4 w-4" />
@@ -375,6 +412,36 @@ export default function SettingsPage() {
                 </div>
               </div>
 
+              <div className="rounded-lg border border-dashed border-border p-4">
+                <p className="font-medium">
+                  {locale === 'he' ? 'התאמה לארגון' : 'Segment setup'}
+                </p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  {getOrganizationSegmentLabel(
+                    organizationData.organization.organization_type,
+                    locale,
+                  )}
+                </p>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  {activeSegmentProfile.onboardingHint}
+                </p>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  {locale === 'he'
+                    ? `תחומי ברירת המחדל: ${formatDomainSummary(
+                        activeSegmentProfile.suggestedDomains,
+                        locale,
+                        4,
+                        activeOrganizationType,
+                      )}`
+                    : `Default starter domains: ${formatDomainSummary(
+                        activeSegmentProfile.suggestedDomains,
+                        locale,
+                        4,
+                        activeOrganizationType,
+                      )}`}
+                </p>
+              </div>
+
               <div className="flex flex-wrap gap-3">
                 {organizationData.membership?.role === 'admin' ? (
                   <>
@@ -399,7 +466,7 @@ export default function SettingsPage() {
             </>
           ) : (
             <form onSubmit={handleCreateOrganization} className="space-y-4">
-              <div className="grid gap-4 md:grid-cols-2">
+              <div className="grid gap-4 md:grid-cols-3">
                 <div className="space-y-2">
                   <Label htmlFor="organization-name">
                     {locale === 'he' ? 'שם הארגון' : 'Organization name'}
@@ -413,6 +480,24 @@ export default function SettingsPage() {
                   />
                 </div>
                 <div className="space-y-2">
+                  <Label>{locale === 'he' ? 'סוג ארגון' : 'Organization type'}</Label>
+                  <Select
+                    value={organizationType}
+                    onValueChange={(value) => setOrganizationType(value as OrganizationType)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {ORGANIZATION_TYPES.map((type) => (
+                        <SelectItem key={type} value={type}>
+                          {getOrganizationSegmentLabel(type, locale)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
                   <Label htmlFor="organization-industry">
                     {locale === 'he' ? 'תחום פעילות' : 'Industry'}
                   </Label>
@@ -423,6 +508,26 @@ export default function SettingsPage() {
                     placeholder={locale === 'he' ? 'לדוגמה Fintech' : 'For example, Fintech'}
                   />
                 </div>
+              </div>
+              <div className="rounded-lg border border-dashed border-border p-4">
+                <p className="font-medium">{getOrganizationSegmentLabel(organizationType, locale)}</p>
+                <p className="mt-1 text-sm text-muted-foreground">{activeSegmentProfile.description}</p>
+                <p className="mt-2 text-sm text-muted-foreground">{activeSegmentProfile.onboardingHint}</p>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  {locale === 'he'
+                    ? `תחומי ברירת המחדל: ${formatDomainSummary(
+                        getSuggestedStarterDomains(organizationType, organizationIndustry),
+                        locale,
+                        4,
+                        organizationType,
+                      )}`
+                    : `Default starter domains: ${formatDomainSummary(
+                        getSuggestedStarterDomains(organizationType, organizationIndustry),
+                        locale,
+                        4,
+                        organizationType,
+                      )}`}
+                </p>
               </div>
               <p className="text-sm text-muted-foreground">
                 {companyCopy.settings.createDescription}

@@ -6,9 +6,11 @@ import {
   APP_ROUTES,
   type OrganizationMemberStatus,
   type OrganizationRole,
+  type OrganizationType,
 } from '@/lib/constants'
 import type { Database, TableInsert, TableRow } from '@/lib/database.types'
 import { getAppUrl } from '@/lib/env'
+import { applyOrganizationStarterDomains } from '@/lib/organizations/defaults'
 import { getProfileBundle } from '@/lib/profile/service'
 
 type AppSupabaseClient = SupabaseClient<Database>
@@ -226,6 +228,7 @@ export async function createOrganization(
   userId: string,
   input: {
     name: string
+    organizationType: OrganizationType
     industry?: string | null
   },
 ) {
@@ -243,6 +246,7 @@ export async function createOrganization(
       org_name: input.name,
       org_slug: slug,
       org_industry: input.industry?.trim() ? input.industry.trim() : null,
+      org_type: input.organizationType,
     })
 
     if (!error) {
@@ -251,6 +255,13 @@ export async function createOrganization(
       if (!context) {
         throw new Error('Organization was created but could not be loaded.')
       }
+
+      await applyOrganizationStarterDomains(
+        supabase,
+        userId,
+        context.organization.organization_type,
+        context.organization.industry,
+      )
 
       return context
     }
@@ -445,6 +456,13 @@ export async function acceptOrganizationInvite(
   if (!context) {
     throw new Error('Invite was accepted but no organization membership was found.')
   }
+
+  await applyOrganizationStarterDomains(
+    supabase,
+    userId,
+    context.organization.organization_type,
+    context.organization.industry,
+  )
 
   return context
 }
