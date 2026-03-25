@@ -28,8 +28,8 @@ export const PAGE_HELP_REGISTRY: Record<string, PageHelpContext> = {
     allowedTopics: ['cards', 'scores', 'next steps', 'navigation', 'training start'],
     actions: ['View personal summary', 'Start or continue training', 'Open detailed reports'],
     starterPrompts: {
-      admin: ['מה אומר ה-Risk Score?', 'מי צריך רענון עכשיו?', 'מה לעשות אחרי תרגיל אחרון?'],
-      employee: ['מה המשמעות של הציון שלי?', 'איך להתחיל אימון?', 'איפה אני רואה את הדוח האישי?'],
+      admin: ['את מי צריך לרענן?', 'מה אומר Risk Score?', 'מה לעשות עכשיו?'],
+      employee: ['איך מתחילים אימון?', 'מה המשמעות של הציון שלי?', 'איך אני משתפר?'],
     },
     notes: riskScoreNotes,
   },
@@ -39,8 +39,8 @@ export const PAGE_HELP_REGISTRY: Record<string, PageHelpContext> = {
     allowedTopics: ['how to answer', 'what happens after responding', 'training tips'],
     actions: ['Open the next simulation', 'Mark as safe or phishing', 'Read feedback'],
     starterPrompts: {
-      admin: ['איך עובד האימון לעובדים?', 'איך להסביר לעובדים מה לעשות?', 'מה קורה אחרי סימולציה?'],
-      employee: ['איך עונים לשאלה?', 'מה יקרה אחרי שאבחר?', 'מה הנקודות האדומות אומרות?'],
+      admin: ['איך עובד האימון לעובדים?', 'מה קורה אחרי סימולציה?', 'איך להסביר לעובדים מה לעשות?'],
+      employee: ['איך עונים לשאלה?', 'מה יקרה אחרי שאבחר?', 'איך אני משתפר?'],
     },
   },
   memory: {
@@ -79,7 +79,7 @@ export const PAGE_HELP_REGISTRY: Record<string, PageHelpContext> = {
     allowedTopics: ['risk score meaning', 'filters', 'segments', 'refresher guidance'],
     actions: ['Filter by segment or channel', 'See who needs refresher', 'Download or view summaries'],
     starterPrompts: {
-      admin: ['מה אומר Risk Score?', 'את מי לרענן קודם?', 'אילו ערוצים הכי מסוכנים?'],
+      admin: ['מה אומר Risk Score?', 'את מי לרענן קודם?', 'מה לעשות עכשיו?'],
       employee: ['למה אין לי גישה לדוחי מנהלים?'],
     },
     notes: riskScoreNotes,

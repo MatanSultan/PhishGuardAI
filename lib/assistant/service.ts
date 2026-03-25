@@ -20,6 +20,10 @@ export interface AssistantResponse {
 export async function handleAssistantRequest(input: AssistantRequest): Promise<AssistantResponse> {
   const pageContext = resolvePageHelpContext(input.page, input.role)
   const systemPrompt = buildAssistantSystemPrompt(input.locale)
+  const nextAction =
+    pageContext.actions[0] ||
+    (input.locale === 'he' ? 'פתחו את לוח הבקרה והתחילו אימון' : 'Open the dashboard and start training')
+
   const userPrompt = buildAssistantUserPrompt({
     role: input.role,
     mode: input.mode,
@@ -30,8 +34,8 @@ export async function handleAssistantRequest(input: AssistantRequest): Promise<A
 
   const fallbackReply =
     input.locale === 'he'
-      ? 'אפשר לסייע רק בהסברים על המוצר והניווט בו. נסה לשאול מה המשמעות של הדף, הכפתור או הציון שאתה רואה.'
-      : 'I can help only with product navigation and explaining what you see. Try asking about the page, a button, or your score.'
+      ? `אני כאן כדי לכוון בתוך PhishGuard AI. אני יכול להסביר את הדף ולהציע צעד הבא. צעד מומלץ: ${nextAction}.`
+      : `I’m here to guide you inside PhishGuard AI. I can explain this page and suggest what to do next. Recommended next step: ${nextAction}.`
 
   if (!hasGroqApiKey()) {
     return {
@@ -54,8 +58,8 @@ export async function handleAssistantRequest(input: AssistantRequest): Promise<A
   const reply =
     completion.choices[0]?.message?.content?.trim() ||
     (input.locale === 'he'
-      ? 'לא הצלחתי להשיב כרגע. נסו שוב בעוד רגע.'
-      : 'I could not generate a reply right now. Please try again.')
+      ? `לא הצלחתי להשיב כרגע. נסו את הצעד הבא: ${nextAction}.`
+      : `I could not generate a reply right now. Try this next: ${nextAction}.`)
 
   return {
     reply,

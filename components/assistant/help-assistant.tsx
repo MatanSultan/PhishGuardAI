@@ -30,8 +30,8 @@ export function HelpAssistant({ role, mode }: HelpAssistantProps) {
 
   const scopeLine =
     locale === 'he'
-      ? 'העוזר מסביר רק על PhishGuard AI: ניווט, דפים, כפתורים, דוחות ואיך להתקדם.'
-      : 'This assistant only helps with PhishGuard AI: navigation, pages, buttons, reports, and next steps.'
+      ? 'עזרה מעשית בתוך PhishGuard AI: ניווט, דפים, כפתורים, דוחות ואיך להתקדם.'
+      : 'Practical help inside PhishGuard AI: navigation, pages, buttons, reports, and next steps.'
 
   const placeholder =
     locale === 'he' ? 'שאל/י על הדף או הכפתור הזה…' : 'Ask about this page or button…'
@@ -39,13 +39,13 @@ export function HelpAssistant({ role, mode }: HelpAssistantProps) {
   const defaultStarter = useMemo(() => {
     if (role === 'admin') {
       return locale === 'he'
-        ? ['מה אומר Risk Score?', 'איך מזמינים עובדים?', 'מה לעשות עכשיו?']
-        : ['What does the Risk Score mean?', 'How do I invite employees?', 'What should I do next?']
+        ? ['את מי צריך לרענן?', 'מה אומר Risk Score?', 'מה לעשות עכשיו?']
+        : ['Who needs a refresher?', 'What does the Risk Score mean?', 'What should I do next?']
     }
 
     return locale === 'he'
-      ? ['איך מתחילים אימון?', 'מה המשמעות של הציון שלי?', 'איפה רואים את הדוח שלי?']
-      : ['How do I start training?', 'What does my score mean?', 'Where do I see my report?']
+      ? ['איך מתחילים אימון?', 'מה המשמעות של הציון שלי?', 'איך אני משתפר?']
+      : ['How do I start training?', 'What does my score mean?', 'How do I improve?']
   }, [locale, role])
 
   useEffect(() => {
@@ -104,8 +104,8 @@ export function HelpAssistant({ role, mode }: HelpAssistantProps) {
           from: 'assistant',
           text:
             locale === 'he'
-              ? 'אפשר לעזור רק בשימוש במוצר. נסה לשאול על הדף או הכפתור הנוכחי.'
-              : 'I can help only with using the product. Try asking about the current page or button.',
+              ? 'אני כאן כדי לעזור בתוך PhishGuard AI. שאל על הדף, הציון או הפעולה הבאה ואכוון אותך מיד.'
+              : 'I’m here to help inside PhishGuard AI. Ask about this page, your score, or the next action and I’ll guide you.',
         },
       ])
     } finally {
