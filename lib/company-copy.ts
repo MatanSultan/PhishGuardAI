@@ -184,6 +184,8 @@ const companyCopy = {
       wrongEmail:
         'This invite was sent to a different email address. Sign in with the invited email to continue.',
       expired: 'This invite is no longer valid. Ask your admin for a fresh invite link.',
+      canceled: 'This invite was canceled. Ask your admin for a new invite link.',
+      alreadyUsed: 'This invite has already been used. Ask your admin for a fresh invite link.',
       alreadyMember: 'Your account already belongs to an organization.',
     },
     settings: {
@@ -370,6 +372,8 @@ const companyCopy = {
       wrongEmail:
         'ההזמנה נשלחה לכתובת אימייל אחרת. התחברו עם האימייל שהוזמן כדי להמשיך.',
       expired: 'ההזמנה כבר אינה תקפה. בקשו מהמנהל קישור חדש.',
+      canceled: 'ההזמנה בוטלה על ידי הארגון. בקשו מהמנהל קישור חדש.',
+      alreadyUsed: 'הקישור הזה כבר נוצל. בקשו מהמנהל קישור חדש.',
       alreadyMember: 'החשבון שלכם כבר שייך לארגון.',
     },
     settings: {
@@ -415,6 +419,18 @@ export function mapInviteAcceptanceError(message: string | null | undefined, loc
 
   if (normalized.includes('different email address')) {
     return copy.wrongEmail
+  }
+
+  if (normalized.includes('canceled')) {
+    return copy.canceled
+  }
+
+  if (normalized.includes('already been used') || normalized.includes('already used')) {
+    return copy.alreadyUsed
+  }
+
+  if (normalized.includes('expired')) {
+    return copy.expired
   }
 
   if (normalized.includes('no longer valid')) {

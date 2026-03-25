@@ -394,24 +394,42 @@ export async function inviteOrganizationMember(
     throw new OrganizationServiceError('That user is already a member of this organization.', 409)
   }
 
-  const { data: existingInvite, error: existingInviteError } = await supabase
+  const { data: existingInvites, error: existingInviteError } = await supabase
     .from('team_invites')
     .select('*')
     .eq('organization_id', input.organizationId)
     .eq('email', normalizedEmail)
     .eq('status', 'pending')
-    .maybeSingle()
+    .order('created_at', { ascending: false })
+    .limit(5)
 
   if (existingInviteError) {
     throw existingInviteError
   }
 
-  if (existingInvite) {
+  const now = Date.now()
+  const validExistingInvite = (existingInvites ?? []).find((invite) => {
+    if (!invite.expires_at) {
+      return true
+    }
+
+    return new Date(invite.expires_at).getTime() > now
+  }) as TableRow<'team_invites'> | undefined
+
+  if (validExistingInvite) {
     return {
-      invite: existingInvite as TableRow<'team_invites'>,
-      inviteUrl: buildInviteUrl(existingInvite.token),
+      invite: validExistingInvite,
+      inviteUrl: buildInviteUrl(validExistingInvite.token),
       isExisting: true,
     }
+  }
+
+  const expiredInviteIds = (existingInvites ?? [])
+    .filter((invite) => invite.expires_at && new Date(invite.expires_at).getTime() <= now)
+    .map((invite) => invite.id)
+
+  if (expiredInviteIds.length) {
+    await supabase.from('team_invites').update({ status: 'expired' }).in('id', expiredInviteIds)
   }
 
   const expiresAt = new Date(Date.now() + 86_400_000 * (input.expiresInDays ?? 7)).toISOString()
@@ -450,6 +468,43 @@ export async function acceptOrganizationInvite(
   token: string,
 ) {
   await getProfileBundle(supabase, userId)
+
+  const { data: existingMembership, error: membershipError } = await supabase
+    .from('organization_members')
+    .select('id')
+    .eq('user_id', userId)
+    .maybeSingle()
+
+  if (membershipError) {
+    throw membershipError
+  }
+
+  if (existingMembership?.id) {
+    throw new OrganizationServiceError('Your account already belongs to an organization.', 409)
+  }
+
+  const { data: inviteLookup, error: inviteLookupError } = await supabase
+    .from('team_invites')
+    .select('status, expires_at')
+    .eq('token', token)
+    .maybeSingle()
+
+  if (!inviteLookupError && inviteLookup) {
+    const expiresAt = inviteLookup.expires_at ? new Date(inviteLookup.expires_at).getTime() : null
+    const expiredByTime = expiresAt !== null && expiresAt <= Date.now()
+
+    if (inviteLookup.status === 'canceled') {
+      throw new OrganizationServiceError('This invite was canceled.', 410)
+    }
+
+    if (inviteLookup.status === 'accepted') {
+      throw new OrganizationServiceError('This invite has already been used.', 410)
+    }
+
+    if (inviteLookup.status === 'expired' || expiredByTime) {
+      throw new OrganizationServiceError('This invite has expired.', 410)
+    }
+  }
 
   const { error } = await supabase.rpc('accept_team_invite', {
     invite_token: token,

@@ -1404,14 +1404,18 @@ export default function AdminPage() {
             ) : invites.length ? (
               invites.slice(0, 8).map((invite) => {
                 const isPending = invite.status === 'pending'
+                const isExpiredByTime = invite.expires_at
+                  ? new Date(invite.expires_at).getTime() <= Date.now()
+                  : false
+                const effectiveStatus = isPending && isExpiredByTime ? 'expired' : invite.status
                 const isActionInProgress = inviteActionKey === invite.id
 
                 return (
                   <div key={invite.id} className="rounded-lg border border-border p-3 text-sm">
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <p className="font-medium">{invite.email}</p>
-                      <Badge variant={isPending ? 'secondary' : 'outline'}>
-                        {formatInviteStatusLabel(invite.status, locale)}
+                      <Badge variant={effectiveStatus === 'pending' ? 'secondary' : 'outline'}>
+                        {formatInviteStatusLabel(effectiveStatus, locale)}
                       </Badge>
                     </div>
                     <p className="mt-2 text-muted-foreground">
@@ -1423,8 +1427,8 @@ export default function AdminPage() {
                     {invite.expires_at ? (
                       <p className="text-muted-foreground">
                         {locale === 'he'
-                          ? `פג תוקף ${formatRelativeTimestamp(invite.expires_at, locale)}`
-                          : `Expires ${formatRelativeTimestamp(invite.expires_at, locale)}`}
+                          ? `${isExpiredByTime ? 'פג תוקף' : 'יפוג תוקף'} ${formatRelativeTimestamp(invite.expires_at, locale)}`
+                          : `${isExpiredByTime ? 'Expired' : 'Expires'} ${formatRelativeTimestamp(invite.expires_at, locale)}`}
                       </p>
                     ) : null}
                     {isPending ? (
