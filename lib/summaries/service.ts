@@ -10,6 +10,7 @@ import {
   generateOrganizationSummaryWithGroq,
   generatePersonalSummaryWithGroq,
 } from '@/lib/groq/service'
+import { getOrganizationExperienceProfile } from '@/lib/organizations/experience'
 import { getOrganizationSegmentProfile } from '@/lib/organizations/segments'
 import {
   formatCategoryLabel,
@@ -122,6 +123,13 @@ function getOrganizationProfile(
   industry?: string | null,
 ) {
   return getOrganizationSegmentProfile(organizationType, industry, locale)
+}
+
+function getOrganizationExperience(
+  locale: SupportedLocale,
+  organizationType?: OrganizationType | null,
+) {
+  return getOrganizationExperienceProfile(organizationType, locale)
 }
 
 function getPersonalSupportPattern(input: PersonalSummaryInput) {
@@ -250,6 +258,10 @@ function buildFallbackOrganizationSummary(
     input.organizationType,
     input.industry,
   )
+  const organizationExperience = getOrganizationExperience(
+    input.locale,
+    input.organizationType,
+  )
 
   if (input.overview.totalSimulationsCompleted === 0) {
     return input.locale === 'he'
@@ -271,8 +283,10 @@ function buildFallbackOrganizationSummary(
           riskSignals: [
             'No team simulations have been completed yet, so there is no reliable baseline.',
             'Initial engagement is still needed before weak domains and channels can be measured.',
+            organizationExperience.noSecurityTeamHint,
           ],
           actions: [
+            organizationExperience.managerActions[0],
             'Invite employees and start with a mixed baseline training session.',
             'Review the dashboard again after each employee completes several attempts.',
           ],
@@ -288,6 +302,7 @@ function buildFallbackOrganizationSummary(
   const flaggedEmployees = input.attentionFlags
     .slice(0, 3)
     .map((employee) => employee.fullName)
+  const scenarioExample = organizationExperience.scenarioExamples[0]
 
   const summary =
     input.locale === 'he'
@@ -321,8 +336,13 @@ function buildFallbackOrganizationSummary(
           ? `עובדים שמצריכים תשומת לב מיידית: ${flaggedEmployees.join(', ')}.`
           : `Employees currently needing close follow-up: ${flaggedEmployees.join(', ')}.`
         : '',
+      scenarioExample
+        ? input.locale === 'he'
+          ? `בארגון מסוג זה כדאי לתרגל גם תרחישים כמו: ${scenarioExample}`
+          : `For this type of organization, keep practicing scenarios such as: ${scenarioExample}`
+        : '',
     ],
-    4,
+    5,
   )
 
   const actions = sliceNonEmpty(
@@ -330,12 +350,13 @@ function buildFallbackOrganizationSummary(
       ...input.companyRecommendations.map((recommendation) =>
         buildOrganizationRecommendationAction(input.locale, recommendation),
       ),
+      ...organizationExperience.managerActions,
       organizationProfile.onboardingHint,
       input.locale === 'he'
         ? 'חזקו מדיניות של אימות שולח לפני לחיצה על קישורים דחופים.'
         : 'Reinforce sender-verification policy before employees act on urgent links.',
     ],
-    4,
+    5,
   )
 
   return {
@@ -352,6 +373,10 @@ function buildFallbackPersonalSummary(
     input.locale,
     input.organizationType,
     null,
+  )
+  const organizationExperience = getOrganizationExperience(
+    input.locale,
+    input.organizationType,
   )
 
   if (input.stats.totalAttempts === 0) {
@@ -378,7 +403,13 @@ function buildFallbackPersonalSummary(
       : {
           summary: 'Your profile is ready. The next step is building a personal baseline with a few first attempts.',
           strengths: ['Your account is set up for personal training.', 'You can start with preferred domains or mixed mode.'],
-          focusAreas: [`Suggested starting focus: ${preferredDomains}.`, organizationProfile.employeeHint],
+          focusAreas: [
+            `Suggested starting focus: ${preferredDomains}.`,
+            organizationProfile.employeeHint,
+            organizationExperience.scenarioExamples[0]
+              ? `A realistic first scenario for your work context: ${organizationExperience.scenarioExamples[0]}`
+              : '',
+          ],
           practicalRules: [
             'Check the sender before clicking links.',
             'Pause when a message adds unusual urgency or asks for sensitive data.',
@@ -448,9 +479,15 @@ function buildFallbackPersonalSummary(
       ...input.recommendations
         .slice(0, 2)
         .map((recommendation) => recommendation.recommendation_text),
+      organizationProfile.employeeHint,
+      organizationExperience.scenarioExamples[0]
+        ? input.locale === 'he'
+          ? `דוגמה רלוונטית לעבודה שלכם: ${organizationExperience.scenarioExamples[0]}`
+          : `Relevant scenario for your work context: ${organizationExperience.scenarioExamples[0]}`
+        : '',
       getPersonalSupportPattern(input),
     ],
-    4,
+    5,
   )
 
   const practicalRules = sliceNonEmpty(
@@ -493,6 +530,7 @@ export async function generateOrganizationRiskSummary(
       type: input.organizationType ?? null,
       industry: input.industry ?? null,
       segmentProfile: getOrganizationProfile(input.locale, input.organizationType, input.industry),
+      segmentExperience: getOrganizationExperience(input.locale, input.organizationType),
     },
     overview: input.overview,
     weakestCategories: input.weakestCategories,
@@ -528,6 +566,10 @@ export async function generatePersonalImprovementSummary(
             input.locale,
             input.organizationType,
             null,
+          ),
+          segmentExperience: getOrganizationExperience(
+            input.locale,
+            input.organizationType,
           ),
         }
       : null,

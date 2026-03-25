@@ -23,6 +23,8 @@ import {
   type SimulationCategory,
 } from '@/lib/constants'
 import { useLocale } from '@/lib/locale-context'
+import { getOrganizationExperienceProfile } from '@/lib/organizations/experience'
+import { getOrganizationSegmentProfile } from '@/lib/organizations/segments'
 import {
   formatCategoryLabel,
   formatChannelLabel,
@@ -273,6 +275,10 @@ export default function TrainingPage() {
   ]
   const isFirstTimeUser = (trainingData?.context.trainingProfile.total_attempts ?? 0) === 0
   const starterDomains = getSuggestedStarterDomains(organizationType, organizationIndustry)
+  const organizationProfile = organizationType
+    ? getOrganizationSegmentProfile(organizationType, organizationIndustry, locale)
+    : null
+  const organizationExperience = getOrganizationExperienceProfile(organizationType, locale)
 
   return (
     <div className="container mx-auto px-4 py-8 lg:px-8" dir={dir}>
@@ -337,9 +343,20 @@ export default function TrainingPage() {
                   : 'Start with the scenarios your organization is most likely to see'}
               </p>
               <p className="mt-1 text-sm text-muted-foreground">
-                {locale === 'he'
-                  ? 'משלוחים, אבטחת חשבון ובנקאות חושפים מהר את הדפוסים הנפוצים ביותר.'
-                  : 'Delivery, account security, and banking expose the most useful early patterns.'}
+                {organizationProfile?.employeeHint ??
+                  (locale === 'he'
+                    ? 'משלוחים, אבטחת חשבון ובנקאות חושפים מהר את הדפוסים הנפוצים ביותר.'
+                    : 'Delivery, account security, and banking expose the most useful early patterns.')}
+              </p>
+              <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                {organizationExperience.scenarioExamples.slice(0, 2).map((example) => (
+                  <div key={example} className="rounded-lg border border-border p-3 text-sm text-muted-foreground">
+                    {example}
+                  </div>
+                ))}
+              </div>
+              <p className="mt-3 text-sm text-muted-foreground">
+                {organizationExperience.noSecurityTeamHint}
               </p>
               <div className="mt-3 flex flex-wrap gap-2">
                 {starterDomains.map((domain) => (

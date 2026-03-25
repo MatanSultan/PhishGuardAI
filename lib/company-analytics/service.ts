@@ -14,6 +14,7 @@ import {
   type OrganizationContext,
   type OrganizationMemberRecord,
 } from '@/lib/organizations/service'
+import { getOrganizationExperienceProfile } from '@/lib/organizations/experience'
 import {
   getOrganizationSegmentProfile,
   getOrganizationSuggestedDomains,
@@ -810,6 +811,7 @@ export async function getOrganizationDashboardData(
     membership: context.membership,
     settings: context.settings,
     overview,
+    channelBreakdown,
     weakestCategories,
     strongestCategories,
     recentActivity: buildRecentActivity(attempts, memberMetrics),
@@ -818,6 +820,7 @@ export async function getOrganizationDashboardData(
     leaderboardPreview,
     teamProgressTrend: buildTrend(attempts),
     lowEngagement,
+    employeesNeedingSupport,
     pendingInvites,
     attentionFlags,
   }
@@ -836,6 +839,10 @@ export async function getOrganizationReportsData(
   const organizationProfile = getOrganizationSegmentProfile(
     context.organization.organization_type,
     context.organization.industry,
+    locale,
+  )
+  const organizationExperience = getOrganizationExperienceProfile(
+    context.organization.organization_type,
     locale,
   )
   const memberMetrics = memberRecords.map(toMemberMetric)
@@ -907,6 +914,7 @@ export async function getOrganizationReportsData(
         ? `${lowEngagement.length} עובדים כמעט לא התאמנו לאחרונה. כדאי לשלוח להם חיזוק פשוט ולתאם סבב חזרה.`
         : `${lowEngagement.length} employees have little recent activity. Send a simple follow-up and restart their training cadence.`
       : '',
+    ...organizationExperience.managerActions,
     locale === 'he'
       ? `לסבב הבא, התחילו עם ${organizationProfile.suggestedDomains
           .slice(0, 3)
@@ -920,7 +928,7 @@ export async function getOrganizationReportsData(
             formatCategoryLabel(domain, locale, context.organization.organization_type),
           )
           .join(', ')}.`,
-  ].filter(Boolean)
+  ].filter(Boolean).slice(0, 5)
   const employeeGroupsNeedingRefreshers = [
     employeesNeedingRefreshers.length
       ? locale === 'he'
@@ -940,8 +948,8 @@ export async function getOrganizationReportsData(
   ].filter(Boolean)
   const plainLanguageSummary =
     locale === 'he'
-      ? `${organizationProfile.label}: הדוח הזה שם דגש על ${weakestCategory ? formatCategoryLabel(weakestCategory.key, locale, context.organization.organization_type) : organizationProfile.focusTopics[0]} ועל צעדים מעשיים למנהלים לא טכניים.`
-      : `${organizationProfile.label}: this report keeps the focus on ${weakestCategory ? formatCategoryLabel(weakestCategory.key, locale, context.organization.organization_type) : organizationProfile.focusTopics[0]} and on practical next steps for non-technical managers.`
+      ? `${organizationProfile.label}: הדוח הזה שם דגש על ${weakestCategory ? formatCategoryLabel(weakestCategory.key, locale, context.organization.organization_type) : organizationProfile.focusTopics[0]}, על ${riskiestChannel ? formatChannelLabel(riskiestChannel.key, locale) : 'הערוצים המרכזיים'}, ועל צעדים מעשיים למנהלים לא טכניים. דוגמה רלוונטית: ${organizationExperience.scenarioExamples[0]}`
+      : `${organizationProfile.label}: this report keeps the focus on ${weakestCategory ? formatCategoryLabel(weakestCategory.key, locale, context.organization.organization_type) : organizationProfile.focusTopics[0]}, the ${riskiestChannel ? formatChannelLabel(riskiestChannel.key, locale).toLowerCase() : 'main communication channels'}, and practical next steps for non-technical managers. Relevant example: ${organizationExperience.scenarioExamples[0]}`
 
   return {
     organization: context.organization,

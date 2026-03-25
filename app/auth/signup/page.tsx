@@ -5,10 +5,20 @@ import { useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Eye, EyeOff, Mail, Lock, User, Building } from 'lucide-react'
 
+import { type OrganizationType, ORGANIZATION_TYPES } from '@/lib/constants'
+import { getOrganizationExperienceProfile } from '@/lib/organizations/experience'
+import { getOrganizationSegmentLabel } from '@/lib/organizations/segments'
 import { useLocale } from '@/lib/locale-context'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 
 export default function SignUpPage() {
   const router = useRouter()
@@ -21,9 +31,34 @@ export default function SignUpPage() {
   const [success, setSuccess] = useState<string | null>(null)
   const [fullName, setFullName] = useState('')
   const [organization, setOrganization] = useState('')
+  const [organizationType, setOrganizationType] = useState<OrganizationType>('other')
+  const [organizationIndustry, setOrganizationIndustry] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
+  const organizationExperience = getOrganizationExperienceProfile(organizationType, locale)
+  const organizationSetupCopy =
+    locale === 'he'
+      ? {
+          organizationName: 'שם הארגון (אופציונלי)',
+          organizationType: 'סוג ארגון',
+          organizationIndustry: 'תחום פעילות (אופציונלי)',
+          organizationNamePlaceholder: 'לדוגמה, בית אלונים',
+          organizationIndustryPlaceholder: 'לדוגמה, רשת חינוך אזורית',
+          setupHint:
+            'נשתמש בזה כדי להציע ברירות מחדל, תרחישים ודוחות שמתאימים לארגון שלכם כבר מההתחלה.',
+          segmentExamplesTitle: 'דוגמאות שתקבלו כבר בתחילת ההקמה',
+        }
+      : {
+          organizationName: 'Organization name (optional)',
+          organizationType: 'Organization type',
+          organizationIndustry: 'Industry (optional)',
+          organizationNamePlaceholder: 'For example, Beit Alonim Care Center',
+          organizationIndustryPlaceholder: 'For example, Regional education network',
+          setupHint:
+            'We use this to suggest relevant defaults, scenarios, and reports from the first admin setup.',
+          segmentExamplesTitle: 'Examples this setup will prioritize',
+        }
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault()
@@ -39,6 +74,8 @@ export default function SignUpPage() {
       body: JSON.stringify({
         fullName,
         organization,
+        organizationType,
+        organizationIndustry,
         email,
         password,
         confirmPassword,
@@ -93,7 +130,7 @@ export default function SignUpPage() {
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="organization">{t.auth.signUp.organization}</Label>
+          <Label htmlFor="organization">{organizationSetupCopy.organizationName}</Label>
           <div className="relative">
             <Building className="absolute ltr:left-3 rtl:right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
@@ -101,9 +138,52 @@ export default function SignUpPage() {
               type="text"
               value={organization}
               onChange={(event) => setOrganization(event.target.value)}
-              placeholder="Acme Inc."
+              placeholder={organizationSetupCopy.organizationNamePlaceholder}
               className="ltr:pl-10 rtl:pr-10"
             />
+          </div>
+        </div>
+
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="space-y-2">
+            <Label>{organizationSetupCopy.organizationType}</Label>
+            <Select
+              value={organizationType}
+              onValueChange={(value) => setOrganizationType(value as OrganizationType)}
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {ORGANIZATION_TYPES.map((type) => (
+                  <SelectItem key={type} value={type}>
+                    {getOrganizationSegmentLabel(type, locale)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="organization-industry">{organizationSetupCopy.organizationIndustry}</Label>
+            <Input
+              id="organization-industry"
+              type="text"
+              value={organizationIndustry}
+              onChange={(event) => setOrganizationIndustry(event.target.value)}
+              placeholder={organizationSetupCopy.organizationIndustryPlaceholder}
+            />
+          </div>
+        </div>
+
+        <div className="rounded-lg border border-dashed border-border p-4 text-sm">
+          <p className="font-medium">{getOrganizationSegmentLabel(organizationType, locale)}</p>
+          <p className="mt-1 text-muted-foreground">{organizationSetupCopy.setupHint}</p>
+          <p className="mt-3 font-medium">{organizationSetupCopy.segmentExamplesTitle}</p>
+          <div className="mt-2 space-y-2 text-muted-foreground">
+            {organizationExperience.scenarioExamples.slice(0, 2).map((example) => (
+              <p key={example}>{example}</p>
+            ))}
           </div>
         </div>
 

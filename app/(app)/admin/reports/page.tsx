@@ -27,6 +27,7 @@ import {
   getCompanyCopy,
 } from '@/lib/company-copy'
 import { useLocale } from '@/lib/locale-context'
+import { getOrganizationDemoPreset } from '@/lib/organizations/demo'
 import { getOrganizationSegmentProfile } from '@/lib/organizations/segments'
 import {
   formatCategoryLabel,
@@ -219,6 +220,42 @@ export default function AdminReportsPage() {
     data.organization.industry,
     locale,
   )
+  const demoPreset = getOrganizationDemoPreset(data.organization.organization_type, locale)
+  const weakestCategoryLabel = data.weakestCategory
+    ? formatCategoryLabel(data.weakestCategory.key, locale, data.organization.organization_type)
+    : organizationProfile.focusTopics[0]
+  const riskyChannel = [...data.channelBreakdown].sort((left, right) => {
+    if (left.correctRate !== right.correctRate) {
+      return left.correctRate - right.correctRate
+    }
+
+    return right.attempts - left.attempts
+  })[0] ?? null
+  const topRecommendation = data.practicalRecommendations[0] ?? ''
+  const refresherSummary =
+    data.employeeGroupsNeedingRefreshers[0] ??
+    (locale === 'he'
+      ? '\u05db\u05e8\u05d2\u05e2 \u05d0\u05d9\u05df \u05e7\u05d1\u05d5\u05e6\u05d4 \u05d1\u05d5\u05dc\u05d8\u05ea \u05e9\u05d3\u05d5\u05e8\u05e9\u05ea \u05d7\u05d9\u05d6\u05d5\u05e7.'
+      : 'No employee group currently stands out for extra reinforcement.')
+  const managerAtAGlanceCopy =
+    locale === 'he'
+      ? {
+          title: '\u05ea\u05de\u05d5\u05e0\u05d4 \u05de\u05d4\u05d9\u05e8\u05d4 \u05dc\u05de\u05e0\u05d4\u05dc',
+          description:
+            '\u05d0\u05e8\u05d1\u05e2 \u05ea\u05d5\u05d1\u05e0\u05d5\u05ea \u05e9\u05d0\u05e4\u05e9\u05e8 \u05dc\u05e9\u05ea\u05e3 \u05d1\u05d3\u05de\u05d5 \u05d0\u05d5 \u05d1\u05e4\u05d2\u05d9\u05e9\u05ea \u05e0\u05d9\u05d4\u05d5\u05dc.',
+          risk: '\u05d4\u05e1\u05d9\u05db\u05d5\u05df \u05d4\u05de\u05e8\u05db\u05d6\u05d9',
+          channel: '\u05d4\u05e2\u05e8\u05d5\u05e5 \u05d4\u05d1\u05e2\u05d9\u05d9\u05ea\u05d9',
+          refreshers: '\u05de\u05d9 \u05e6\u05e8\u05d9\u05da \u05e8\u05e2\u05e0\u05d5\u05df',
+          nextAction: '\u05de\u05d4 \u05dc\u05e2\u05e9\u05d5\u05ea \u05e2\u05db\u05e9\u05d9\u05d5',
+        }
+      : {
+          title: 'Manager at a glance',
+          description: 'Four points to share quickly in a demo or manager review.',
+          risk: 'Main risk area',
+          channel: 'Riskiest channel',
+          refreshers: 'Who needs a refresher',
+          nextAction: 'Next action',
+        }
 
   return (
     <div className="container mx-auto space-y-6 px-4 py-8 lg:px-8" dir={dir}>
@@ -372,13 +409,83 @@ export default function AdminReportsPage() {
         </CardContent>
       </Card>
 
+      <Card>
+        <CardHeader>
+          <CardTitle>{managerAtAGlanceCopy.title}</CardTitle>
+          <CardDescription>{managerAtAGlanceCopy.description}</CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="rounded-lg border border-border p-4">
+            <p className="text-sm text-muted-foreground">{managerAtAGlanceCopy.risk}</p>
+            <p className="mt-2 font-semibold">{weakestCategoryLabel}</p>
+            <p className="mt-2 text-sm text-muted-foreground">
+              {data.weakestCategory
+                ? locale === 'he'
+                  ? `\u05d3\u05d9\u05d5\u05e7 \u05e9\u05dc ${data.weakestCategory.correctRate}% \u05d1-${data.weakestCategory.attempts} \u05e0\u05d9\u05e1\u05d9\u05d5\u05e0\u05d5\u05ea.`
+                  : `${data.weakestCategory.correctRate}% accuracy across ${data.weakestCategory.attempts} attempts.`
+                : organizationProfile.adminHint}
+            </p>
+          </div>
+          <div className="rounded-lg border border-border p-4">
+            <p className="text-sm text-muted-foreground">{managerAtAGlanceCopy.channel}</p>
+            <p className="mt-2 font-semibold">
+              {riskyChannel
+                ? formatChannelLabel(riskyChannel.key, locale)
+                : locale === 'he'
+                  ? '\u05e2\u05d3\u05d9\u05d9\u05df \u05dc\u05d0 \u05d1\u05e8\u05d5\u05e8'
+                  : 'Not clear yet'}
+            </p>
+            <p className="mt-2 text-sm text-muted-foreground">
+              {riskyChannel
+                ? locale === 'he'
+                  ? `\u05d3\u05d9\u05d5\u05e7 \u05e9\u05dc ${riskyChannel.correctRate}% \u05d1-${riskyChannel.attempts} \u05e0\u05d9\u05e1\u05d9\u05d5\u05e0\u05d5\u05ea.`
+                  : `${riskyChannel.correctRate}% accuracy across ${riskyChannel.attempts} attempts.`
+                : companyCopy.reports.noChannelBreakdown}
+            </p>
+          </div>
+          <div className="rounded-lg border border-border p-4">
+            <p className="text-sm text-muted-foreground">{managerAtAGlanceCopy.refreshers}</p>
+            <p className="mt-2 font-semibold">
+              {data.employeeGroupsNeedingRefreshers.length
+                ? locale === 'he'
+                  ? `${data.employeeGroupsNeedingRefreshers.length} \u05e7\u05d1\u05d5\u05e6\u05d5\u05ea`
+                  : `${data.employeeGroupsNeedingRefreshers.length} groups`
+                : locale === 'he'
+                  ? '\u05d0\u05d9\u05df \u05d3\u05d7\u05d9\u05e4\u05d5\u05ea \u05de\u05d9\u05d9\u05d3\u05d9\u05ea'
+                  : 'No urgent refresher group'}
+            </p>
+            <p className="mt-2 text-sm text-muted-foreground">{refresherSummary}</p>
+          </div>
+          <div className="rounded-lg border border-border p-4">
+            <p className="text-sm text-muted-foreground">{managerAtAGlanceCopy.nextAction}</p>
+            <p className="mt-2 font-semibold">
+              {topRecommendation ||
+                (locale === 'he'
+                  ? '\u05d4\u05de\u05e9\u05d9\u05db\u05d5 \u05dc\u05ea\u05e8\u05d2\u05dc \u05ea\u05d7\u05d5\u05dd \u05de\u05e8\u05db\u05d6\u05d9 \u05d0\u05d7\u05d3'
+                  : 'Keep reinforcing one main scenario area')}
+            </p>
+            <p className="mt-2 text-sm text-muted-foreground">{organizationProfile.adminHint}</p>
+          </div>
+        </CardContent>
+      </Card>
+
       {!hasTeamAttempts ? (
         <Card className="border-primary/30 bg-primary/5">
           <CardHeader>
             <CardTitle>{companyCopy.reports.noTeamDataTitle}</CardTitle>
             <CardDescription>{companyCopy.reports.noTeamDataDescription}</CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-4">
+            <div className="rounded-lg border border-primary/20 bg-background/70 p-4 text-sm leading-7 text-foreground">
+              {demoPreset.pitch}
+            </div>
+            <div className="space-y-3">
+              {demoPreset.quickSteps.slice(0, 2).map((step) => (
+                <div key={step} className="rounded-lg border border-border p-3 text-sm">
+                  {step}
+                </div>
+              ))}
+            </div>
             <Link href="/admin">
               <Button>{locale === 'he' ? 'חזרו לניהול הצוות' : 'Back to Team Admin'}</Button>
             </Link>

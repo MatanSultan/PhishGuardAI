@@ -20,12 +20,14 @@ import {
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 
 import { useLocale } from '@/lib/locale-context'
+import { getOrganizationDemoPreset } from '@/lib/organizations/demo'
 import {
   getOrganizationSegmentLabel,
   getOrganizationSegmentProfile,
 } from '@/lib/organizations/segments'
 import {
   formatCategoryLabel,
+  formatChannelLabel,
   formatDifficultyLabel,
   formatRelativeTimestamp,
 } from '@/lib/presentation'
@@ -79,6 +81,13 @@ interface MembersPayload {
 
 interface InvitesPayload {
   invites: DbRow<'team_invites'>[]
+}
+
+interface SupportEmployeePreview {
+  fullName: string
+  email: string
+  accuracyRate: number
+  totalAttempts: number
 }
 
 function getAttentionFlagCopy(
@@ -190,6 +199,34 @@ function getRecommendationCopy(
             .map((domain) => formatCategoryLabel(domain, locale, (recommendation.organizationType ?? organizationType) as never))
             .join(', ')}.`,
   }
+}
+
+function getPrimaryIssueCopy(
+  locale: 'en' | 'he',
+  overview: DashboardPayload['overview'],
+  lowEngagementCount: number,
+) {
+  if (lowEngagementCount >= Math.max(2, Math.ceil(overview.totalEmployees / 3))) {
+    return locale === 'he'
+      ? 'הבעיה המרכזית כרגע היא חוסר התמדה באימון.'
+      : 'The main issue right now is low training consistency.'
+  }
+
+  if (overview.safeDetectionRate + 8 < overview.phishingDetectionRate) {
+    return locale === 'he'
+      ? 'הבעיה המרכזית כרגע היא בלבול מול הודעות תקינות.'
+      : 'The main issue right now is confusion around legitimate messages.'
+  }
+
+  if (overview.phishingDetectionRate + 8 < overview.safeDetectionRate) {
+    return locale === 'he'
+      ? 'הבעיה המרכזית כרגע היא זיהוי חלש של הודעות פישינג.'
+      : 'The main issue right now is missed phishing detection.'
+  }
+
+  return locale === 'he'
+    ? 'כרגע צריך בעיקר חיזוק ממוקד, לא שינוי תהליך רחב.'
+    : 'The team mainly needs focused reinforcement, not a major process change.'
 }
 
 export default function AdminPage() {
@@ -600,6 +637,65 @@ export default function AdminPage() {
     data.organization.industry,
     locale,
   )
+  const demoPreset = getOrganizationDemoPreset(data.organization.organization_type, locale)
+  const weakestCategory = data.weakestCategories[0] ?? null
+  const weakestCategoryLabel = weakestCategory
+    ? formatCategoryLabel(weakestCategory.category, locale, data.organization.organization_type)
+    : organizationProfile.focusTopics[0]
+  const riskyChannel = [...data.channelBreakdown].sort((left, right) => {
+    if (left.correctRate !== right.correctRate) {
+      return left.correctRate - right.correctRate
+    }
+
+    return right.attempts - left.attempts
+  })[0] ?? null
+  const followUpEmployee:
+    | CompanyAttentionFlag
+    | SupportEmployeePreview
+    | null = data.attentionFlags[0] ?? data.employeesNeedingSupport[0] ?? null
+  const topRecommendation = data.companyRecommendations[0]
+    ? getRecommendationCopy(
+        data.companyRecommendations[0],
+        locale,
+        data.organization.organization_type,
+      )
+    : null
+  const managerQuickCopy =
+    locale === 'he'
+      ? {
+          title: 'מבט מהיר למנהל',
+          description: 'המסר המרכזי שאפשר להבין תוך דקה אחת גם בלי רקע בסייבר.',
+          biggestRisk: 'הסיכון המרכזי עכשיו',
+          followUp: 'מי צריך מעקב',
+          riskyChannel: 'הערוץ הכי בעייתי',
+          nextAction: 'מה לעשות עכשיו',
+          noUrgentFollowUp: 'אין כרגע עובד בולט למעקב מיידי.',
+          noRiskyChannel: 'עדיין אין מספיק נתונים כדי לזהות ערוץ בעייתי.',
+          demoTitle: 'מסלול דמו מהיר',
+          demoDescription: 'איך להראות ערך במסך אחד או שניים לארגון הזה.',
+        }
+      : {
+          title: 'Manager at a glance',
+          description: 'The main story a non-technical manager should understand in under a minute.',
+          biggestRisk: 'Biggest current risk',
+          followUp: 'Who needs follow-up',
+          riskyChannel: 'Most problematic channel',
+          nextAction: 'Best next action',
+          noUrgentFollowUp: 'No employee currently stands out for urgent follow-up.',
+          noRiskyChannel: 'There is not enough data yet to identify a risky channel.',
+          demoTitle: 'Fast demo path',
+          demoDescription: 'How to show value on one or two screens for this segment.',
+        }
+  const followUpDescription = !followUpEmployee
+    ? managerQuickCopy.noUrgentFollowUp
+    : 'reasons' in followUpEmployee
+      ? getAttentionFlagCopy(followUpEmployee, locale, data.organization.organization_type)
+      : locale === 'he'
+        ? `דיוק של ${followUpEmployee.accuracyRate}% אחרי ${followUpEmployee.totalAttempts} ניסיונות.`
+        : `${followUpEmployee.accuracyRate}% accuracy after ${followUpEmployee.totalAttempts} attempts.`
+  const nextActionDescription = topRecommendation
+    ? `${topRecommendation.reason} ${getPrimaryIssueCopy(locale, data.overview, data.lowEngagement.length)}`
+    : getPrimaryIssueCopy(locale, data.overview, data.lowEngagement.length)
 
   return (
     <div className="container mx-auto space-y-6 px-4 py-8 lg:px-8" dir={dir}>
@@ -652,6 +748,86 @@ export default function AdminPage() {
           </CardContent>
         </Card>
       ) : null}
+
+      {(singleAdminTeam || data.overview.totalSimulationsCompleted < 8) ? (
+        <Card>
+          <CardHeader>
+            <CardTitle>{managerQuickCopy.demoTitle}</CardTitle>
+            <CardDescription>{managerQuickCopy.demoDescription}</CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-6 lg:grid-cols-[1.2fr_1fr]">
+            <div className="rounded-lg border border-border bg-muted/30 p-4">
+              <p className="text-sm leading-7 text-foreground">{demoPreset.pitch}</p>
+              <p className="mt-3 text-sm text-muted-foreground">{demoPreset.managerValue}</p>
+            </div>
+            <div className="space-y-3">
+              {demoPreset.quickSteps.map((step) => (
+                <div key={step} className="rounded-lg border border-border p-3 text-sm">
+                  {step}
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      ) : null}
+
+      <Card>
+        <CardHeader>
+          <CardTitle>{managerQuickCopy.title}</CardTitle>
+          <CardDescription>{managerQuickCopy.description}</CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="rounded-lg border border-border p-4">
+            <p className="text-sm text-muted-foreground">{managerQuickCopy.biggestRisk}</p>
+            <p className="mt-2 font-semibold">{weakestCategoryLabel}</p>
+            <p className="mt-2 text-sm text-muted-foreground">
+              {weakestCategory
+                ? locale === 'he'
+                  ? `${weakestCategory.count} \u05e2\u05d5\u05d1\u05d3\u05d9\u05dd \u05de\u05e1\u05de\u05e0\u05d9\u05dd \u05d0\u05ea \u05d4\u05ea\u05d7\u05d5\u05dd \u05d4\u05d6\u05d4 \u05db\u05ea\u05d7\u05d5\u05dd \u05d4\u05d7\u05dc\u05e9 \u05d1\u05d9\u05d5\u05ea\u05e8 \u05e9\u05dc\u05d4\u05dd.`
+                  : `${weakestCategory.count} employees currently show this as their weakest area.`
+                : organizationProfile.adminHint}
+            </p>
+          </div>
+          <div className="rounded-lg border border-border p-4">
+            <p className="text-sm text-muted-foreground">{managerQuickCopy.followUp}</p>
+            <p className="mt-2 font-semibold">
+              {followUpEmployee
+                ? followUpEmployee.fullName
+                : locale === 'he'
+                  ? '\u05d0\u05d9\u05df \u05d3\u05d7\u05d9\u05e4\u05d5\u05ea \u05de\u05d9\u05d9\u05d3\u05d9\u05ea'
+                  : 'No urgent follow-up'}
+            </p>
+            <p className="mt-2 text-sm text-muted-foreground">{followUpDescription}</p>
+          </div>
+          <div className="rounded-lg border border-border p-4">
+            <p className="text-sm text-muted-foreground">{managerQuickCopy.riskyChannel}</p>
+            <p className="mt-2 font-semibold">
+              {riskyChannel
+                ? formatChannelLabel(riskyChannel.key, locale)
+                : locale === 'he'
+                  ? '\u05e2\u05d3\u05d9\u05d9\u05df \u05dc\u05d0 \u05d1\u05e8\u05d5\u05e8'
+                  : 'Not clear yet'}
+            </p>
+            <p className="mt-2 text-sm text-muted-foreground">
+              {riskyChannel
+                ? locale === 'he'
+                  ? `\u05d3\u05d9\u05d5\u05e7 \u05e9\u05dc ${riskyChannel.correctRate}% \u05d1-${riskyChannel.attempts} \u05e0\u05d9\u05e1\u05d9\u05d5\u05e0\u05d5\u05ea.`
+                  : `${riskyChannel.correctRate}% accuracy across ${riskyChannel.attempts} attempts.`
+                : managerQuickCopy.noRiskyChannel}
+            </p>
+          </div>
+          <div className="rounded-lg border border-border p-4">
+            <p className="text-sm text-muted-foreground">{managerQuickCopy.nextAction}</p>
+            <p className="mt-2 font-semibold">
+              {topRecommendation?.title ??
+                (locale === 'he'
+                  ? '\u05d4\u05de\u05e9\u05d9\u05db\u05d5 \u05dc\u05d7\u05d6\u05e7 \u05d0\u05ea \u05ea\u05d7\u05d5\u05dd \u05d4\u05e1\u05d9\u05db\u05d5\u05df \u05d4\u05de\u05e8\u05db\u05d6\u05d9'
+                  : 'Keep reinforcing the main risk area')}
+            </p>
+            <p className="mt-2 text-sm text-muted-foreground">{nextActionDescription}</p>
+          </div>
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>

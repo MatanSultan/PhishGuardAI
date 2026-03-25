@@ -253,7 +253,11 @@ export function formatTrainingContext(context: TrainingContext) {
           type: context.organizationProfile.type,
           label: context.organizationProfile.label,
           description: context.organizationProfile.description,
+          onboardingHint: context.organizationProfile.onboardingHint,
+          adminHint: context.organizationProfile.adminHint,
+          employeeHint: context.organizationProfile.employeeHint,
           focusTopics: context.organizationProfile.focusTopics,
+          priorityChannels: context.organizationProfile.priorityChannels,
           suggestedDomains: context.organizationProfile.suggestedDomains,
         }
       : null,

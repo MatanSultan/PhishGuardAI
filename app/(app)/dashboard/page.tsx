@@ -18,6 +18,7 @@ import {
 
 import { type OrganizationType } from '@/lib/constants'
 import { useLocale } from '@/lib/locale-context'
+import { getOrganizationSegmentProfile } from '@/lib/organizations/segments'
 import { formatCategoryLabel, formatDomainSummary, formatRelativeTimestamp } from '@/lib/presentation'
 import type { getDashboardData } from '@/lib/training/service'
 import { getSuggestedStarterDomains } from '@/lib/training/domains'
@@ -138,6 +139,31 @@ export default function DashboardPage() {
     organizationType,
     data.organization?.industry ?? null,
   )
+  const organizationProfile = getOrganizationSegmentProfile(
+    organizationType,
+    data.organization?.industry ?? null,
+    locale,
+  )
+  const employeeGuidanceCopy =
+    locale === 'he'
+      ? {
+          practiceExampleTitle: '\u05d3\u05d5\u05d2\u05de\u05d4 \u05dc\u05de\u05d4 \u05e9\u05ea\u05ea\u05e8\u05d2\u05dc\u05d5',
+          practiceExampleDescription:
+            '\u05d4\u05d3\u05d5\u05d2\u05de\u05d4 \u05d4\u05d6\u05d5 \u05de\u05ea\u05d0\u05d9\u05de\u05d4 \u05dc\u05d4\u05d5\u05d3\u05e2\u05d5\u05ea \u05e9\u05d0\u05ea\u05dd \u05e2\u05e9\u05d5\u05d9\u05d9\u05dd \u05dc\u05e8\u05d0\u05d5\u05ea \u05d1\u05e2\u05d1\u05d5\u05d3\u05d4 \u05d4\u05d9\u05d5\u05de\u05d9\u05d5\u05de\u05d9\u05ea.',
+          aiDescriptionPrefix:
+            '\u05d4\u05d4\u05de\u05dc\u05e6\u05d5\u05ea \u05de\u05ea\u05de\u05e7\u05d3\u05d5\u05ea \u05d1\u05de\u05e1\u05e8\u05d9\u05dd \u05e9\u05ea\u05d5\u05d0\u05de\u05d9\u05dd \u05dc\u05ea\u05e7\u05e9\u05d5\u05e8\u05ea \u05d4\u05d9\u05d5\u05de\u05d9\u05d5\u05de\u05d9\u05ea \u05e9\u05dc\u05db\u05dd.',
+          noRecommendations:
+            '\u05d4\u05de\u05dc\u05e6\u05d5\u05ea \u05d9\u05d5\u05e4\u05d9\u05e2\u05d5 \u05dc\u05d0\u05d7\u05e8 \u05db\u05de\u05d4 \u05e0\u05d9\u05e1\u05d9\u05d5\u05e0\u05d5\u05ea, \u05d5\u05d9\u05ea\u05de\u05e7\u05d3\u05d5 \u05d1\u05e1\u05d5\u05d2\u05d9 \u05d4\u05d4\u05d5\u05d3\u05e2\u05d5\u05ea \u05e9\u05d4\u05db\u05d9 \u05e8\u05dc\u05d5\u05d5\u05e0\u05d8\u05d9\u05d9\u05dd \u05dc\u05ea\u05e4\u05e7\u05d9\u05d3 \u05e9\u05dc\u05db\u05dd.',
+        }
+      : {
+          practiceExampleTitle: 'Example to practice first',
+          practiceExampleDescription:
+            'This example matches the kinds of messages you are likely to see in your day-to-day work.',
+          aiDescriptionPrefix:
+            'These recommendations stay focused on the message types that match your daily workflow.',
+          noRecommendations:
+            'Recommendations will appear after a few attempts and will stay tied to the kinds of messages most relevant to your role.',
+        }
   const personalSummaryCopy =
     locale === 'he'
       ? {
@@ -262,6 +288,7 @@ export default function DashboardPage() {
                 ? 'בחרו תחומי אימון במסך האימון או הישארו במצב מעורב כדי לקבל גיוון מההתחלה.'
                 : 'Choose training domains in the arena or stay on mixed mode for variety from the start.'}
             </CardDescription>
+            <p className="text-sm text-muted-foreground">{organizationProfile.employeeHint}</p>
           </CardHeader>
           <CardContent className="flex flex-col gap-4">
             <div className="text-sm text-muted-foreground">
@@ -273,7 +300,17 @@ export default function DashboardPage() {
                   ? `מומלץ להתחיל עם: ${formatDomainSummary(starterDomains, locale, 3, organizationType)}`
                   : `Suggested starter domains: ${formatDomainSummary(starterDomains, locale, 3, organizationType)}`}
             </div>
-            <div>
+            <div className="space-y-4">
+              <div className="rounded-lg border border-border bg-muted/30 p-4">
+                <p className="text-sm font-medium">{employeeGuidanceCopy.practiceExampleTitle}</p>
+                <p className="mt-2 text-sm text-foreground">{organizationProfile.focusTopics[0]}</p>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  {organizationProfile.employeeHint}
+                </p>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  {employeeGuidanceCopy.practiceExampleDescription}
+                </p>
+              </div>
               <Link href="/training">
                 <Button>
                   <Swords className="ltr:mr-2 rtl:ml-2 h-4 w-4" />
@@ -390,6 +427,7 @@ export default function DashboardPage() {
               <Sparkles className="h-5 w-5 text-primary" />
               {t.dashboard.aiRecommendations}
             </CardTitle>
+            <p className="text-sm text-muted-foreground">{employeeGuidanceCopy.aiDescriptionPrefix}</p>
             <CardDescription>
               {locale === 'he' ? 'המלצות מותאמות אישית על בסיס הזיכרון והביצועים שלך' : 'Personalized guidance based on your memory profile and recent attempts'}
             </CardDescription>

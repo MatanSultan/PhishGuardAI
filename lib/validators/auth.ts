@@ -1,6 +1,6 @@
 import { z } from 'zod'
 
-import { SUPPORTED_LOCALES } from '@/lib/constants'
+import { ORGANIZATION_TYPES, SUPPORTED_LOCALES } from '@/lib/constants'
 
 const normalizedEmail = z
   .string()
@@ -18,6 +18,8 @@ export const signUpSchema = z
   .object({
     fullName: z.string().trim().min(2).max(120),
     organization: z.string().trim().max(120).optional().or(z.literal('')),
+    organizationType: z.enum(ORGANIZATION_TYPES).default('other'),
+    organizationIndustry: z.string().trim().max(120).optional().or(z.literal('')),
     email: normalizedEmail,
     password: z.string().min(8).max(72),
     confirmPassword: z.string().min(8).max(72),

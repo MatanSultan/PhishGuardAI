@@ -80,7 +80,7 @@ export async function getCandidateSimulations(
     .select('*')
     .eq('language', options.locale)
     .order('created_at', { ascending: false })
-    .limit(options.limit ?? 10)
+    .limit(options.limit ?? 24)
 
   if (options.channel) {
     query = query.eq('channel', options.channel)

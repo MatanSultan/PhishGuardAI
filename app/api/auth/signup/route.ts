@@ -21,6 +21,8 @@ export async function POST(request: Request) {
           full_name: body.fullName,
           preferred_language: body.preferredLanguage,
           organization: body.organization || null,
+          organization_type: body.organizationType,
+          organization_industry: body.organizationIndustry || null,
         },
         emailRedirectTo: `${getAppUrl()}${APP_ROUTES.authCallback}?next=${encodeURIComponent(next)}`,
       },

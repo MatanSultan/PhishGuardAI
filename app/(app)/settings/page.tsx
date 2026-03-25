@@ -22,15 +22,17 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { formatOrganizationRoleLabel, getCompanyCopy } from '@/lib/company-copy'
 import {
   ORGANIZATION_TYPES,
-  type OrganizationType,
   SIMULATION_CATEGORIES,
+  type OrganizationType,
   type SimulationCategory,
 } from '@/lib/constants'
 import { useLocale } from '@/lib/locale-context'
+import { getOrganizationExperienceProfile } from '@/lib/organizations/experience'
 import {
   getOrganizationSegmentLabel,
   getOrganizationSegmentProfile,
 } from '@/lib/organizations/segments'
+import type { OrganizationSignupDraft } from '@/lib/organizations/signup-draft'
 import { formatDifficultyLabel, formatDomainSummary } from '@/lib/presentation'
 import { getSuggestedStarterDomains } from '@/lib/training/domains'
 
@@ -46,6 +48,7 @@ interface ProfilePayload {
     total_score: number
     preferred_domains: SimulationCategory[]
   }
+  signupDraft: OrganizationSignupDraft | null
 }
 
 interface OrganizationPayload {
@@ -101,31 +104,48 @@ export default function SettingsPage() {
           fetch('/api/organization'),
         ])
 
-        const profilePayload = await profileResponse.json().catch(() => null)
-        const organizationPayload = await organizationResponse.json().catch(() => null)
+        const profilePayload = (await profileResponse.json().catch(() => null)) as ProfilePayload | null
+        const organizationPayload = (await organizationResponse.json().catch(() => null)) as OrganizationPayload | null
 
         if (!active) {
           return
         }
 
-        if (!profileResponse.ok || !organizationResponse.ok) {
+        if (!profileResponse.ok || !organizationResponse.ok || !profilePayload || !organizationPayload) {
           setLoadError(companyCopy.settings.loadError)
           setIsLoading(false)
           return
         }
 
         const preferredDomains = profilePayload.trainingProfile.preferred_domains ?? []
+        const signupDraft = profilePayload.signupDraft
+        const nextOrganizationType =
+          organizationPayload.organization?.organization_type ??
+          signupDraft?.organizationType ??
+          'other'
+        const nextOrganizationIndustry =
+          organizationPayload.organization?.industry ??
+          signupDraft?.industry ??
+          ''
+        const nextOrganizationName =
+          organizationPayload.organization?.name ??
+          signupDraft?.name ??
+          ''
         const defaultDomains =
           preferredDomains.length > 0
             ? preferredDomains
-            : getSuggestedStarterDomains(
-                organizationPayload?.organization?.organization_type,
-                organizationPayload?.organization?.industry,
-              )
+            : getSuggestedStarterDomains(nextOrganizationType, nextOrganizationIndustry)
 
         setProfileData(profilePayload)
         setSelectedDomains(defaultDomains)
         setOrganizationData(organizationPayload)
+
+        if (!organizationPayload.organization) {
+          setOrganizationName(nextOrganizationName)
+          setOrganizationType(nextOrganizationType)
+          setOrganizationIndustry(nextOrganizationIndustry)
+        }
+
         setIsLoading(false)
       } catch {
         if (!active) {
@@ -175,7 +195,7 @@ export default function SettingsPage() {
               ...current,
               trainingProfile: {
                 ...current.trainingProfile,
-                preferred_domains: payload.preferredDomains ?? domains,
+                preferred_domains: payload?.preferredDomains ?? domains,
               },
             }
           : current,
@@ -260,53 +280,125 @@ export default function SettingsPage() {
   }
 
   const activeOrganizationType = organizationData.organization?.organization_type ?? organizationType
+  const activeOrganizationIndustry = organizationData.organization?.industry ?? organizationIndustry
   const activeSegmentProfile = getOrganizationSegmentProfile(
     activeOrganizationType,
-    organizationData.organization?.industry ?? organizationIndustry,
+    activeOrganizationIndustry,
     locale,
   )
+  const activeExperienceProfile = getOrganizationExperienceProfile(activeOrganizationType, locale)
+  const settingsCopy =
+    locale === 'he'
+      ? {
+          title: 'הגדרות',
+          subtitle: 'ניהול פרופיל, שפה, העדפות אימון והגדרת הארגון.',
+          profileTitle: 'פרופיל משתמש',
+          profileDescription: 'המידע הבסיסי שמחובר לחשבון שלכם.',
+          fullName: 'שם מלא',
+          email: 'אימייל',
+          preferredLanguage: 'שפה מועדפת',
+          languageTitle: 'שפה',
+          languageDescription: 'העדכון נשמר גם בפרופיל וגם בעוגיית הדפדפן.',
+          domainTitle: 'תחומי אימון מועדפים',
+          domainDescription: 'התחומים האלה יקבלו עדיפות בפעם הבאה שתתאמנו.',
+          currentSelection: 'הבחירה הנוכחית',
+          companyOrganization: 'ארגון',
+          companyRole: 'הרשאה',
+          companyFeatures: 'תכונות צוות',
+          teamAdmin: 'מנהל ארגון',
+          leaderboardEnabled: 'דירוג פעיל',
+          leaderboardDisabled: 'דירוג כבוי',
+          segmentSetup: 'התאמה לארגון',
+          segmentGuideTitle: 'איך הארגון הזה יוגדר במערכת',
+          examplesTitle: 'תרחישים שיופיעו בעדיפות',
+          actionsTitle: 'מה כדאי לעשות ראשון',
+          defaultDomains: 'תחומי ברירת המחדל',
+          companyName: 'שם הארגון',
+          organizationType: 'סוג ארגון',
+          industry: 'תחום פעילות',
+          companyPlaceholder: 'לדוגמה, בית אלונים',
+          industryPlaceholder: 'לדוגמה, רשת חינוך אזורית',
+          createOrganization: 'יצירת ארגון',
+          creatingOrganization: 'יוצרים ארגון...',
+          teamAdminButton: 'מרכז ניהול צוות',
+          teamReportsButton: 'דוחות צוות',
+          leaderboardButton: 'טבלת דירוג',
+          trainingState: 'מצב למידה',
+          level: 'רמה',
+          attempts: 'ניסיונות',
+          score: 'ציון',
+        }
+      : {
+          title: 'Settings',
+          subtitle: 'Manage your profile, language, training preferences, and company setup.',
+          profileTitle: 'User Profile',
+          profileDescription: 'Basic information associated with your account.',
+          fullName: 'Full name',
+          email: 'Email',
+          preferredLanguage: 'Preferred language',
+          languageTitle: 'Language',
+          languageDescription: 'This updates both your profile preference and the browser locale cookie.',
+          domainTitle: 'Preferred Training Domains',
+          domainDescription: 'These domains will be prioritized the next time you train.',
+          currentSelection: 'Current selection',
+          companyOrganization: 'Organization',
+          companyRole: 'Role',
+          companyFeatures: 'Team features',
+          teamAdmin: 'Organization admin',
+          leaderboardEnabled: 'Leaderboard enabled',
+          leaderboardDisabled: 'Leaderboard disabled',
+          segmentSetup: 'Segment setup',
+          segmentGuideTitle: 'How this organization will be configured',
+          examplesTitle: 'Examples that will be prioritized',
+          actionsTitle: 'Best first steps',
+          defaultDomains: 'Default starter domains',
+          companyName: 'Organization name',
+          organizationType: 'Organization type',
+          industry: 'Industry',
+          companyPlaceholder: 'For example, Beit Alonim',
+          industryPlaceholder: 'For example, Regional education network',
+          createOrganization: 'Create Organization',
+          creatingOrganization: 'Creating organization...',
+          teamAdminButton: 'Open Team Admin',
+          teamReportsButton: 'Open Team Reports',
+          leaderboardButton: 'Leaderboard',
+          trainingState: 'Training State',
+          level: 'Level',
+          attempts: 'Attempts',
+          score: 'Score',
+        }
 
   return (
     <div className="container mx-auto space-y-6 px-4 py-8 lg:px-8" dir={dir}>
       <div>
-        <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
-          {locale === 'he' ? 'הגדרות' : 'Settings'}
-        </h1>
-        <p className="mt-1 text-muted-foreground">
-          {locale === 'he'
-            ? 'ניהול פרופיל, שפה, העדפות אימון ומצב ארגוני.'
-            : 'Manage your profile, language, training preferences, and company setup.'}
-        </p>
+        <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">{settingsCopy.title}</h1>
+        <p className="mt-1 text-muted-foreground">{settingsCopy.subtitle}</p>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>{locale === 'he' ? 'פרופיל משתמש' : 'User Profile'}</CardTitle>
-          <CardDescription>
-            {locale === 'he'
-              ? 'המידע הבסיסי שמחובר לחשבון שלכם.'
-              : 'Basic information associated with your account.'}
-          </CardDescription>
+          <CardTitle>{settingsCopy.profileTitle}</CardTitle>
+          <CardDescription>{settingsCopy.profileDescription}</CardDescription>
         </CardHeader>
         <CardContent className="grid gap-4 sm:grid-cols-3">
           <div className="rounded-lg border border-border p-4">
             <div className="mb-2 flex items-center gap-2 text-muted-foreground">
               <User className="h-4 w-4" />
-              <span>{locale === 'he' ? 'שם מלא' : 'Full name'}</span>
+              <span>{settingsCopy.fullName}</span>
             </div>
             <p className="font-medium">{profileData.profile.full_name || '-'}</p>
           </div>
           <div className="rounded-lg border border-border p-4">
             <div className="mb-2 flex items-center gap-2 text-muted-foreground">
               <Mail className="h-4 w-4" />
-              <span>{locale === 'he' ? 'אימייל' : 'Email'}</span>
+              <span>{settingsCopy.email}</span>
             </div>
             <p className="font-medium">{profileData.profile.email || '-'}</p>
           </div>
           <div className="rounded-lg border border-border p-4">
             <div className="mb-2 flex items-center gap-2 text-muted-foreground">
               <Globe className="h-4 w-4" />
-              <span>{locale === 'he' ? 'שפה מועדפת' : 'Preferred language'}</span>
+              <span>{settingsCopy.preferredLanguage}</span>
             </div>
             <p className="font-medium">
               {profileData.profile.preferred_language === 'he' ? 'עברית' : 'English'}
@@ -317,12 +409,8 @@ export default function SettingsPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>{locale === 'he' ? 'שפה' : 'Language'}</CardTitle>
-          <CardDescription>
-            {locale === 'he'
-              ? 'העדכון נשמר גם בפרופיל וגם בעוגיית הדפדפן.'
-              : 'This updates both your profile preference and the browser locale cookie.'}
-          </CardDescription>
+          <CardTitle>{settingsCopy.languageTitle}</CardTitle>
+          <CardDescription>{settingsCopy.languageDescription}</CardDescription>
         </CardHeader>
         <CardContent className="flex gap-3">
           <Button variant={locale === 'he' ? 'default' : 'outline'} onClick={() => setLocale('he')}>
@@ -336,12 +424,8 @@ export default function SettingsPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>{locale === 'he' ? 'תחומי אימון מועדפים' : 'Preferred Training Domains'}</CardTitle>
-          <CardDescription>
-            {locale === 'he'
-              ? 'התחומים האלה יקבלו עדיפות בפעם הבאה שתתאמנו.'
-              : 'These domains will be prioritized the next time you train.'}
-          </CardDescription>
+          <CardTitle>{settingsCopy.domainTitle}</CardTitle>
+          <CardDescription>{settingsCopy.domainDescription}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <DomainSelector
@@ -353,9 +437,8 @@ export default function SettingsPage() {
             disabled={isSavingDomains}
           />
           <p className="text-sm text-muted-foreground">
-            {locale === 'he'
-              ? `הבחירה הנוכחית: ${formatDomainSummary(selectedDomains, locale)}`
-              : `Current selection: ${formatDomainSummary(selectedDomains, locale)}`}
+            {settingsCopy.currentSelection}:{' '}
+            {formatDomainSummary(selectedDomains, locale, 3, activeOrganizationType)}
           </p>
           {domainStatus ? (
             <Alert variant={domainStatus.kind === 'error' ? 'destructive' : 'default'}>
@@ -377,7 +460,7 @@ export default function SettingsPage() {
                 <div className="rounded-lg border border-border p-4">
                   <div className="mb-2 flex items-center gap-2 text-muted-foreground">
                     <Building2 className="h-4 w-4" />
-                    <span>{locale === 'he' ? 'ארגון' : 'Organization'}</span>
+                    <span>{settingsCopy.companyOrganization}</span>
                   </div>
                   <p className="font-medium">{organizationData.organization.name}</p>
                   <p className="text-sm text-muted-foreground">{organizationData.organization.slug}</p>
@@ -385,81 +468,92 @@ export default function SettingsPage() {
                 <div className="rounded-lg border border-border p-4">
                   <div className="mb-2 flex items-center gap-2 text-muted-foreground">
                     <ShieldCheck className="h-4 w-4" />
-                    <span>{locale === 'he' ? 'הרשאה' : 'Role'}</span>
+                    <span>{settingsCopy.companyRole}</span>
                   </div>
                   <p className="font-medium">
                     {organizationData.membership?.role === 'admin'
-                      ? locale === 'he'
-                        ? 'מנהל ארגון'
-                        : 'Organization admin'
+                      ? settingsCopy.teamAdmin
                       : formatOrganizationRoleLabel('member', locale)}
                   </p>
                 </div>
                 <div className="rounded-lg border border-border p-4">
                   <div className="mb-2 flex items-center gap-2 text-muted-foreground">
                     <Users className="h-4 w-4" />
-                    <span>{locale === 'he' ? 'תכונות צוות' : 'Team features'}</span>
+                    <span>{settingsCopy.companyFeatures}</span>
                   </div>
                   <p className="font-medium">
                     {organizationData.settings?.allow_leaderboard
-                      ? locale === 'he'
-                        ? 'דירוג פעיל'
-                        : 'Leaderboard enabled'
-                      : locale === 'he'
-                        ? 'דירוג כבוי'
-                        : 'Leaderboard disabled'}
+                      ? settingsCopy.leaderboardEnabled
+                      : settingsCopy.leaderboardDisabled}
                   </p>
                 </div>
               </div>
 
               <div className="rounded-lg border border-dashed border-border p-4">
-                <p className="font-medium">
-                  {locale === 'he' ? 'התאמה לארגון' : 'Segment setup'}
-                </p>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  {getOrganizationSegmentLabel(
-                    organizationData.organization.organization_type,
-                    locale,
-                  )}
-                </p>
-                <p className="mt-2 text-sm text-muted-foreground">
-                  {activeSegmentProfile.onboardingHint}
-                </p>
-                <p className="mt-2 text-sm text-muted-foreground">
-                  {locale === 'he'
-                    ? `תחומי ברירת המחדל: ${formatDomainSummary(
+                <div className="grid gap-4 lg:grid-cols-[1.1fr_1fr]">
+                  <div>
+                    <p className="font-medium">{settingsCopy.segmentSetup}</p>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      {getOrganizationSegmentLabel(
+                        organizationData.organization.organization_type,
+                        locale,
+                      )}
+                    </p>
+                    <p className="mt-2 text-sm text-muted-foreground">
+                      {activeSegmentProfile.onboardingHint}
+                    </p>
+                    <p className="mt-2 text-sm text-muted-foreground">
+                      {settingsCopy.defaultDomains}:{' '}
+                      {formatDomainSummary(
                         activeSegmentProfile.suggestedDomains,
                         locale,
                         4,
                         activeOrganizationType,
-                      )}`
-                    : `Default starter domains: ${formatDomainSummary(
-                        activeSegmentProfile.suggestedDomains,
-                        locale,
-                        4,
-                        activeOrganizationType,
-                      )}`}
-                </p>
+                      )}
+                    </p>
+                    <p className="mt-2 text-sm text-muted-foreground">
+                      {activeExperienceProfile.noSecurityTeamHint}
+                    </p>
+                  </div>
+                  <div className="space-y-4">
+                    <div>
+                      <p className="text-sm font-medium">{settingsCopy.examplesTitle}</p>
+                      <div className="mt-2 space-y-2">
+                        {activeExperienceProfile.scenarioExamples.slice(0, 3).map((example) => (
+                          <div key={example} className="rounded-lg border border-border p-3 text-sm">
+                            {example}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium">{settingsCopy.actionsTitle}</p>
+                      <div className="mt-2 space-y-2">
+                        {activeExperienceProfile.managerActions.map((action) => (
+                          <div key={action} className="rounded-lg border border-border p-3 text-sm">
+                            {action}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
 
               <div className="flex flex-wrap gap-3">
                 {organizationData.membership?.role === 'admin' ? (
                   <>
                     <Link href="/admin">
-                      <Button>{locale === 'he' ? 'מרכז ניהול צוות' : 'Open Team Admin'}</Button>
+                      <Button>{settingsCopy.teamAdminButton}</Button>
                     </Link>
                     <Link href="/admin/reports">
-                      <Button variant="outline">
-                        {locale === 'he' ? 'דוחות צוות' : 'Open Team Reports'}
-                      </Button>
+                      <Button variant="outline">{settingsCopy.teamReportsButton}</Button>
                     </Link>
                   </>
                 ) : null}
                 {organizationData.settings?.allow_leaderboard ? (
                   <Link href="/leaderboard">
-                    <Button variant="outline">
-                      {locale === 'he' ? 'טבלת דירוג' : 'Leaderboard'}
-                    </Button>
+                    <Button variant="outline">{settingsCopy.leaderboardButton}</Button>
                   </Link>
                 ) : null}
               </div>
@@ -468,24 +562,22 @@ export default function SettingsPage() {
             <form onSubmit={handleCreateOrganization} className="space-y-4">
               <div className="grid gap-4 md:grid-cols-3">
                 <div className="space-y-2">
-                  <Label htmlFor="organization-name">
-                    {locale === 'he' ? 'שם הארגון' : 'Organization name'}
-                  </Label>
+                  <Label htmlFor="organization-name">{settingsCopy.companyName}</Label>
                   <Input
                     id="organization-name"
                     value={organizationName}
                     onChange={(event) => setOrganizationName(event.target.value)}
-                    placeholder={locale === 'he' ? 'לדוגמה Acme Security' : 'For example, Acme Security'}
+                    placeholder={settingsCopy.companyPlaceholder}
                     required
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>{locale === 'he' ? 'סוג ארגון' : 'Organization type'}</Label>
+                  <Label>{settingsCopy.organizationType}</Label>
                   <Select
                     value={organizationType}
                     onValueChange={(value) => setOrganizationType(value as OrganizationType)}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger className="w-full">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -498,48 +590,68 @@ export default function SettingsPage() {
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="organization-industry">
-                    {locale === 'he' ? 'תחום פעילות' : 'Industry'}
-                  </Label>
+                  <Label htmlFor="organization-industry">{settingsCopy.industry}</Label>
                   <Input
                     id="organization-industry"
                     value={organizationIndustry}
                     onChange={(event) => setOrganizationIndustry(event.target.value)}
-                    placeholder={locale === 'he' ? 'לדוגמה Fintech' : 'For example, Fintech'}
+                    placeholder={settingsCopy.industryPlaceholder}
                   />
                 </div>
               </div>
               <div className="rounded-lg border border-dashed border-border p-4">
-                <p className="font-medium">{getOrganizationSegmentLabel(organizationType, locale)}</p>
-                <p className="mt-1 text-sm text-muted-foreground">{activeSegmentProfile.description}</p>
-                <p className="mt-2 text-sm text-muted-foreground">{activeSegmentProfile.onboardingHint}</p>
-                <p className="mt-2 text-sm text-muted-foreground">
-                  {locale === 'he'
-                    ? `תחומי ברירת המחדל: ${formatDomainSummary(
+                <div className="grid gap-4 lg:grid-cols-[1.1fr_1fr]">
+                  <div>
+                    <p className="font-medium">{settingsCopy.segmentGuideTitle}</p>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      {getOrganizationSegmentLabel(organizationType, locale)}
+                    </p>
+                    <p className="mt-2 text-sm text-muted-foreground">{activeSegmentProfile.description}</p>
+                    <p className="mt-2 text-sm text-muted-foreground">{activeSegmentProfile.onboardingHint}</p>
+                    <p className="mt-2 text-sm text-muted-foreground">
+                      {settingsCopy.defaultDomains}:{' '}
+                      {formatDomainSummary(
                         getSuggestedStarterDomains(organizationType, organizationIndustry),
                         locale,
                         4,
                         organizationType,
-                      )}`
-                    : `Default starter domains: ${formatDomainSummary(
-                        getSuggestedStarterDomains(organizationType, organizationIndustry),
-                        locale,
-                        4,
-                        organizationType,
-                      )}`}
-                </p>
+                      )}
+                    </p>
+                    <p className="mt-2 text-sm text-muted-foreground">
+                      {activeExperienceProfile.noSecurityTeamHint}
+                    </p>
+                  </div>
+                  <div className="space-y-4">
+                    <div>
+                      <p className="text-sm font-medium">{settingsCopy.examplesTitle}</p>
+                      <div className="mt-2 space-y-2">
+                        {activeExperienceProfile.scenarioExamples.slice(0, 3).map((example) => (
+                          <div key={example} className="rounded-lg border border-border p-3 text-sm">
+                            {example}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium">{settingsCopy.actionsTitle}</p>
+                      <div className="mt-2 space-y-2">
+                        {activeExperienceProfile.managerActions.map((action) => (
+                          <div key={action} className="rounded-lg border border-border p-3 text-sm">
+                            {action}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
               <p className="text-sm text-muted-foreground">
                 {companyCopy.settings.createDescription}
               </p>
               <Button type="submit" disabled={isCreatingOrganization}>
                 {isCreatingOrganization
-                  ? locale === 'he'
-                    ? 'יוצרים ארגון...'
-                    : 'Creating organization...'
-                  : locale === 'he'
-                    ? 'יצירת ארגון'
-                    : 'Create Organization'}
+                  ? settingsCopy.creatingOrganization
+                  : settingsCopy.createOrganization}
               </Button>
             </form>
           )}
@@ -554,11 +666,11 @@ export default function SettingsPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>{locale === 'he' ? 'מצב למידה' : 'Training State'}</CardTitle>
+          <CardTitle>{settingsCopy.trainingState}</CardTitle>
         </CardHeader>
         <CardContent className="grid gap-4 sm:grid-cols-3">
           <div className="rounded-lg border border-border p-4">
-            <p className="text-sm text-muted-foreground">{locale === 'he' ? 'רמה' : 'Level'}</p>
+            <p className="text-sm text-muted-foreground">{settingsCopy.level}</p>
             <p className="text-2xl font-bold">
               {profileData.trainingProfile.current_level
                 ? formatDifficultyLabel(
@@ -569,11 +681,11 @@ export default function SettingsPage() {
             </p>
           </div>
           <div className="rounded-lg border border-border p-4">
-            <p className="text-sm text-muted-foreground">{locale === 'he' ? 'ניסיונות' : 'Attempts'}</p>
+            <p className="text-sm text-muted-foreground">{settingsCopy.attempts}</p>
             <p className="text-2xl font-bold">{profileData.trainingProfile.total_attempts ?? 0}</p>
           </div>
           <div className="rounded-lg border border-border p-4">
-            <p className="text-sm text-muted-foreground">{locale === 'he' ? 'ציון' : 'Score'}</p>
+            <p className="text-sm text-muted-foreground">{settingsCopy.score}</p>
             <p className="text-2xl font-bold">{profileData.trainingProfile.total_score ?? 0}</p>
           </div>
         </CardContent>
