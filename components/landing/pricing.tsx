@@ -11,93 +11,95 @@ export function Pricing() {
   const copy =
     locale === 'he'
       ? {
-          title: 'תמחור ישר לישראל',
-          subtitle: 'התחילו מהר, והוסיפו שירות מנוהל רק אם צריך.',
+          title: 'תמחור פשוט שמתחבר לערך',
+          subtitle: 'קל להבין מה מקבלים, וקל להתחיל בפיילוט או בהטמעה רחבה יותר.',
+          popularBadge: 'המסלול המומלץ',
           plans: [
             {
               name: 'Starter / SMB',
-              price: 'ILS 1,200–1,800',
+              price: 'ILS 1,200-1,800',
               period: '/חודש',
-              description: 'עד ~80 עובדים, מוכן לפיילוט מהיר',
+              description: 'לעסקים קטנים וארגונים עד כ-80 עובדים',
               features: [
-                'סימולציות ואימונים במייל/SMS/ווטסאפ (עברית/אנגלית)',
-                'ציון סיכון ארגוני ודוחות בסיס',
-                'תרחישי ברירת מחדל לפי מגזר (חינוך, רשויות, עמותות, בתי אבות, SMB)',
-                'תמיכה במייל',
+                'סימולציות באימייל, SMS ו-WhatsApp בעברית ובאנגלית',
+                'ציון סיכון ארגוני ודוחות בסיס למנהל',
+                'תרחישים מותאמים למגזר ולשימוש מהיר בפיילוט',
+                'תמיכה במייל והקמה מהירה',
               ],
               cta: 'התחלת פיילוט',
               popular: false,
             },
             {
               name: 'Growth / Organization',
-              price: 'ILS 3,200–4,800',
+              price: 'ILS 3,200-4,800',
               period: '/חודש',
-              description: 'עד ~300 עובדים עם נראות מלאה למנהלים',
+              description: 'לארגונים עד כ-300 עובדים שצריכים תמונת מצב מלאה',
               features: [
-                'סיכומי AI למנהלים ותובנות לפי ערוץ',
-                'ציון סיכון עם המלצות המשך',
-                'סימולציות מותאמות למגזר ישראלי',
-                'תמיכת Priority והכוונת קליטה',
+                'סיכומי מנהלים עם המלצות פעולה פשוטות',
+                'תובנות לפי ערוץ, נושא וקבוצות עובדים',
+                'תרחישים מותאמים לחינוך, רשויות, עמותות, בתי אבות ו-SMB',
+                'תמיכה מועדפת וליווי עליה לאוויר',
               ],
-              cta: 'תיאום דמו',
+              cta: 'לתיאום דמו',
               popular: true,
             },
             {
               name: 'Managed add-on',
-              price: '+ILS 1,200–2,000',
+              price: '+ILS 1,200-2,000',
               period: '/חודש',
-              description: 'שכבה מנוהלת לצוותים בלי אנשי סייבר',
+              description: 'לארגונים בלי איש סייבר פנימי',
               features: [
-                'רענון פישינג רבעוני וכיוונון תוכן',
-                'סדנאות מנהלים ומיני וובינרים לעובדים',
-                'הדגמות ליווי וביקורות רבעוניות עם הנהלה',
+                'רענון תכנים רבעוני ועדכון תרחישים',
+                'מפגשי מנהלים והדרכות קצרות לעובדים',
+                'ליווי שוטף לדמו, הטמעה וביקורת רבעונית',
               ],
-              cta: 'דברו איתנו',
+              cta: 'לדבר איתנו',
               popular: false,
             },
           ],
         }
       : {
-          title: 'Straightforward pricing for Israeli teams',
-          subtitle: 'Start fast, add managed service only if you need it.',
+          title: 'Pricing that is easy to explain',
+          subtitle: 'Clear plans, clear value, and a simple path to pilot or rollout.',
+          popularBadge: 'Most popular',
           plans: [
             {
               name: 'Starter / SMB',
-              price: 'ILS 1,200–1,800',
+              price: 'ILS 1,200-1,800',
               period: '/mo',
-              description: 'Up to ~80 employees, ready for quick pilots',
+              description: 'For small teams and organizations up to about 80 employees',
               features: [
-                'Email/SMS/WhatsApp simulations in English & Hebrew',
-                'Organization Risk Score + baseline reports',
-                'Segment presets (schools, municipalities, nonprofits, care, SMB)',
-                'Email support',
+                'Email, SMS, and WhatsApp simulations in Hebrew and English',
+                'Organization Risk Score and baseline manager reports',
+                'Segment-aware scenarios for a fast pilot launch',
+                'Email support and quick setup',
               ],
               cta: 'Start a pilot',
               popular: false,
             },
             {
               name: 'Growth / Organization',
-              price: 'ILS 3,200–4,800',
+              price: 'ILS 3,200-4,800',
               period: '/mo',
-              description: 'Up to ~300 employees with full manager visibility',
+              description: 'For organizations up to about 300 employees that need full manager visibility',
               features: [
-                'AI summaries for managers and channel-level insights',
-                'Risk Score with next actions',
-                'Organization-tuned simulations and Israeli scenarios',
-                'Priority support and light onboarding assist',
+                'Manager summaries with practical next actions',
+                'Insights by channel, topic, and employee group',
+                'Organization-tuned simulations for Israeli segments',
+                'Priority support and light onboarding help',
               ],
               cta: 'Book a demo',
               popular: true,
             },
             {
               name: 'Managed add-on',
-              price: '+ILS 1,200–2,000',
+              price: '+ILS 1,200-2,000',
               period: '/mo',
-              description: 'For teams without security staff',
+              description: 'For teams without in-house security staff',
               features: [
-                'Quarterly phishing refresh + content tuning',
-                'Manager workshops and micro employee webinars',
-                'Concierge demos and quarterly stakeholder reviews',
+                'Quarterly scenario refresh and content tuning',
+                'Manager workshops and short employee sessions',
+                'Ongoing support for demos, rollout, and quarterly reviews',
               ],
               cta: 'Talk to us',
               popular: false,
@@ -105,21 +107,16 @@ export function Pricing() {
           ],
         }
 
-
   return (
     <section id="pricing" className="border-t border-border bg-muted/30 py-20 lg:py-32" dir={dir}>
       <div className="container mx-auto px-4 lg:px-8">
-        {/* Section Header */}
         <div className="mx-auto max-w-2xl text-center">
           <h2 className="text-balance text-3xl font-bold tracking-tight sm:text-4xl">
             {copy.title}
           </h2>
-          <p className="mt-4 text-pretty text-lg text-muted-foreground">
-            {copy.subtitle}
-          </p>
+          <p className="mt-4 text-pretty text-lg text-muted-foreground">{copy.subtitle}</p>
         </div>
 
-        {/* Pricing Cards */}
         <div className="mt-16 grid gap-8 lg:grid-cols-3">
           {copy.plans.map((plan, index) => {
             const isPopular = 'popular' in plan && plan.popular
@@ -127,34 +124,28 @@ export function Pricing() {
               <div
                 key={index}
                 className={cn(
-                  "relative rounded-2xl border bg-card p-8 transition-all",
-                  isPopular
-                    ? "border-primary shadow-lg shadow-primary/10"
-                    : "border-border"
+                  'relative rounded-2xl border bg-card p-8 transition-all',
+                  isPopular ? 'border-primary shadow-lg shadow-primary/10' : 'border-border',
                 )}
               >
-                {/* Popular Badge */}
                 {isPopular && (
                   <div className="absolute -top-3 ltr:left-1/2 rtl:right-1/2 ltr:-translate-x-1/2 rtl:translate-x-1/2">
                     <span className="rounded-full bg-primary px-4 py-1 text-xs font-medium text-primary-foreground">
-                      Popular
+                      {copy.popularBadge}
                     </span>
                   </div>
                 )}
 
-                {/* Plan Header */}
                 <div className="mb-6">
                   <h3 className="text-xl font-semibold">{plan.name}</h3>
                   <p className="mt-1 text-sm text-muted-foreground">{plan.description}</p>
                 </div>
 
-                {/* Price */}
                 <div className="mb-6">
                   <span className="text-4xl font-bold">{plan.price}</span>
                   <span className="text-muted-foreground">{plan.period}</span>
                 </div>
 
-                {/* Features */}
                 <ul className="mb-8 space-y-3">
                   {plan.features.map((feature, featureIndex) => (
                     <li key={featureIndex} className="flex items-center gap-3">
@@ -166,14 +157,13 @@ export function Pricing() {
                   ))}
                 </ul>
 
-                {/* CTA Button */}
                 <Link href="/auth/signup" className="block">
                   <Button
                     className={cn(
-                      "w-full",
+                      'w-full',
                       isPopular
-                        ? "bg-primary hover:bg-primary/90"
-                        : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
+                        ? 'bg-primary hover:bg-primary/90'
+                        : 'bg-secondary text-secondary-foreground hover:bg-secondary/80',
                     )}
                   >
                     {plan.cta}

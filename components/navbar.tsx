@@ -19,6 +19,7 @@ import {
   Trophy,
   User,
   X,
+  type LucideIcon,
 } from 'lucide-react'
 import { useTheme } from 'next-themes'
 
@@ -44,6 +45,12 @@ interface NavbarProps {
   } | null
 }
 
+type NavLink = {
+  href: string
+  label: string
+  icon?: LucideIcon
+}
+
 export function Navbar({ variant = 'landing', organizationState = null }: NavbarProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const { theme, setTheme } = useTheme()
@@ -54,14 +61,33 @@ export function Navbar({ variant = 'landing', organizationState = null }: Navbar
   const toggleThemeLabel = locale === 'he' ? 'החלפת ערכת נושא' : 'Toggle theme'
   const toggleMenuLabel = locale === 'he' ? 'פתיחת תפריט' : 'Toggle menu'
 
-  const landingLinks = [
-    { href: '#features', label: t.nav.features },
-    { href: '#how-it-works', label: t.nav.howItWorks },
-    { href: '#pricing', label: t.nav.pricing },
-    { href: '#faq', label: t.nav.faq },
+  const landingLabels =
+    locale === 'he'
+      ? {
+          features: 'יכולות',
+          howItWorks: 'איך זה עובד',
+          pricing: 'מחירים',
+          faq: 'שאלות נפוצות',
+          signIn: 'כניסה',
+          cta: 'לתיאום דמו',
+        }
+      : {
+          features: t.nav.features,
+          howItWorks: t.nav.howItWorks,
+          pricing: t.nav.pricing,
+          faq: t.nav.faq,
+          signIn: t.nav.signIn,
+          cta: 'Book a demo',
+        }
+
+  const landingLinks: NavLink[] = [
+    { href: '#features', label: landingLabels.features },
+    { href: '#how-it-works', label: landingLabels.howItWorks },
+    { href: '#pricing', label: landingLabels.pricing },
+    { href: '#faq', label: landingLabels.faq },
   ]
 
-  const appLinks = [
+  const appLinks: NavLink[] = [
     {
       href: '/dashboard',
       label: locale === 'he' ? 'לוח בקרה' : 'Dashboard',
@@ -69,7 +95,7 @@ export function Navbar({ variant = 'landing', organizationState = null }: Navbar
     },
     {
       href: '/training',
-      label: locale === 'he' ? 'זירת אימונים' : 'Training Arena',
+      label: locale === 'he' ? 'אזור אימון' : 'Training Arena',
       icon: Swords,
     },
     {
@@ -133,6 +159,7 @@ export function Navbar({ variant = 'landing', organizationState = null }: Navbar
         <div className="hidden items-center gap-1 md:flex">
           {links.map((link) => {
             const isActive = 'icon' in link && pathname === link.href
+            const Icon = 'icon' in link ? link.icon : null
 
             return (
               <Link
@@ -145,7 +172,7 @@ export function Navbar({ variant = 'landing', organizationState = null }: Navbar
                     : 'text-muted-foreground hover:bg-muted hover:text-foreground',
                 )}
               >
-                {'icon' in link && <link.icon className="h-4 w-4" />}
+                {Icon ? <Icon className="h-4 w-4" /> : null}
                 {link.label}
               </Link>
             )
@@ -193,12 +220,12 @@ export function Navbar({ variant = 'landing', organizationState = null }: Navbar
             <>
               <Link href="/auth/signin" className="hidden md:block">
                 <Button variant="ghost" size="sm">
-                  {t.nav.signIn}
+                  {landingLabels.signIn}
                 </Button>
               </Link>
               <Link href="/auth/signup" className="hidden md:block">
                 <Button size="sm" className="bg-primary hover:bg-primary/90">
-                  {t.nav.getStarted}
+                  {landingLabels.cta}
                 </Button>
               </Link>
             </>
@@ -219,7 +246,10 @@ export function Navbar({ variant = 'landing', organizationState = null }: Navbar
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={handleSignOut} className="flex items-center gap-2 text-destructive">
+                <DropdownMenuItem
+                  onClick={handleSignOut}
+                  className="flex items-center gap-2 text-destructive"
+                >
                   <LogOut className="h-4 w-4" />
                   {t.nav.signOut}
                 </DropdownMenuItem>
@@ -244,6 +274,7 @@ export function Navbar({ variant = 'landing', organizationState = null }: Navbar
           <div className="container mx-auto space-y-1 px-4 py-4">
             {links.map((link) => {
               const isActive = 'icon' in link && pathname === link.href
+              const Icon = 'icon' in link ? link.icon : null
 
               return (
                 <Link
@@ -257,7 +288,7 @@ export function Navbar({ variant = 'landing', organizationState = null }: Navbar
                   )}
                   onClick={() => setMobileMenuOpen(false)}
                 >
-                  {'icon' in link && <link.icon className="h-4 w-4" />}
+                  {Icon ? <Icon className="h-4 w-4" /> : null}
                   {link.label}
                 </Link>
               )
@@ -267,11 +298,13 @@ export function Navbar({ variant = 'landing', organizationState = null }: Navbar
               <div className="flex flex-col gap-2 pt-4">
                 <Link href="/auth/signin" onClick={() => setMobileMenuOpen(false)}>
                   <Button variant="outline" className="w-full">
-                    {t.nav.signIn}
+                    {landingLabels.signIn}
                   </Button>
                 </Link>
                 <Link href="/auth/signup" onClick={() => setMobileMenuOpen(false)}>
-                  <Button className="w-full bg-primary hover:bg-primary/90">{t.nav.getStarted}</Button>
+                  <Button className="w-full bg-primary hover:bg-primary/90">
+                    {landingLabels.cta}
+                  </Button>
                 </Link>
               </div>
             )}

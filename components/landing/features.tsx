@@ -1,6 +1,13 @@
 'use client'
 
-import { ShieldCheck, Radar, Sparkles, BarChart3, MessageCircle, HeartHandshake } from 'lucide-react'
+import {
+  ShieldCheck,
+  Radar,
+  Sparkles,
+  BarChart3,
+  MessageCircle,
+  HeartHandshake,
+} from 'lucide-react'
 import { useLocale } from '@/lib/locale-context'
 
 const icons = [ShieldCheck, BarChart3, Radar, Sparkles, MessageCircle, HeartHandshake]
@@ -10,27 +17,64 @@ export function Features() {
   const copy =
     locale === 'he'
       ? {
-          title: 'למה מנהלים אוהבים את PhishGuard AI',
-          subtitle: 'מסר מכוון ערך, לא ג׳רגון אבטחה.',
+          title: 'מה מקבלים בפועל',
+          subtitle:
+            'לא עוד מערכת שמפציצה בנתונים. תמונה ברורה למה קורה ומה צריך לעשות עכשיו.',
           items: [
-            { title: 'ציון סיכון ברור', description: 'מדד 0–100 שמראה אם הצוות בטוח או צריך חיזוק.' },
-            { title: 'שקיפות למנהלים', description: 'מי זקוק לרענון, איזה ערוץ מסוכן, ומה לעשות עכשיו.' },
-            { title: 'מותאם לסגמנט הישראלי', description: 'בתי ספר, רשויות, עמותות, בתי אבות ו-SMB עם תרחישים מקומיים.' },
-            { title: 'AI שמדבר פשוט', description: 'תקציר מנהלים בעברית או אנגלית בלי מונחי סייבר מיותרים.' },
-            { title: 'אימונים ריאליים', description: 'אימייל, SMS ו-WhatsApp עם חשבוניות, הורים, ספקים ודליברי.' },
-            { title: 'עובד גם בלי צוות אבטחה', description: 'מסלול מודרך שמסביר מה לעשות צעד-אחר-צעד.' },
+            {
+              title: 'ציון סיכון שקל להסביר',
+              description: 'מספר אחד שמראה מה מצב הארגון ומה מושך את הסיכון למטה.',
+            },
+            {
+              title: 'תמונה ברורה למנהל',
+              description: 'רואים מי צריך רענון, אילו נושאים חלשים, ומה הפעולה הבאה שכדאי לעשות.',
+            },
+            {
+              title: 'תרחישים שמרגישים ישראליים',
+              description: 'הודעות על חשבוניות, הורים, ספקים, משלוחים, רשויות ו-WhatsApp - לא דוגמאות גנריות מחו"ל.',
+            },
+            {
+              title: 'סיכומים פשוטים להבנה',
+              description: 'סיכומי AI בעברית ובאנגלית שמדברים בשפה של מנהלים, בלי מונחים מיותרים.',
+            },
+            {
+              title: 'אימון על מצבים אמיתיים',
+              description: 'אימייל, SMS ו-WhatsApp עם מצבים יומיומיים שהעובדים שלכם כבר פוגשים.',
+            },
+            {
+              title: 'עובד גם בלי איש סייבר',
+              description: 'תהליך ברור מהקמה ראשונית ועד רענון עובדים, בלי פרויקט מורכב ובלי עומס מיותר.',
+            },
           ],
         }
       : {
-          title: 'Why managers pick PhishGuard AI',
-          subtitle: 'Value-first messaging, not security jargon.',
+          title: 'What managers actually get',
+          subtitle: 'Not more noise. A clear picture of what is happening and what to do next.',
           items: [
-            { title: 'Clear Risk Score', description: '0–100 score that shows if the team is safe or needs reinforcement.' },
-            { title: 'Manager visibility', description: 'Who needs a refresher, which channel is risky, and the best next action.' },
-            { title: 'Built for Israeli segments', description: 'Schools, municipalities, nonprofits, care homes, and SMBs with local scenarios.' },
-            { title: 'AI that speaks plainly', description: 'Executive summaries in English or Hebrew without buzzwords.' },
-            { title: 'Real-world drills', description: 'Email, SMS, and WhatsApp with invoices, parents, vendors, and deliveries.' },
-            { title: 'Works without a security team', description: 'Guided flows that explain what to do step by step.' },
+            {
+              title: 'A Risk Score you can explain',
+              description: 'One score that shows the current risk level and the main reasons behind it.',
+            },
+            {
+              title: 'Manager visibility',
+              description: 'See who needs a refresher, which topics are weak, and the best next action.',
+            },
+            {
+              title: 'Local scenarios for Israel',
+              description: 'Parent messages, invoices, suppliers, deliveries, municipalities, and WhatsApp impersonation.',
+            },
+            {
+              title: 'Plain-language summaries',
+              description: 'AI summaries in Hebrew or English that managers can read and use immediately.',
+            },
+            {
+              title: 'Training on real situations',
+              description: 'Email, SMS, and WhatsApp examples that look like the messages employees already get.',
+            },
+            {
+              title: 'Works without a security team',
+              description: 'A guided flow from setup to refreshers, without adding another complex project.',
+            },
           ],
         }
 
@@ -41,9 +85,7 @@ export function Features() {
           <h2 className="text-balance text-3xl font-bold tracking-tight sm:text-4xl">
             {copy.title}
           </h2>
-          <p className="mt-4 text-pretty text-lg text-muted-foreground">
-            {copy.subtitle}
-          </p>
+          <p className="mt-4 text-pretty text-lg text-muted-foreground">{copy.subtitle}</p>
         </div>
 
         <div className="mt-16 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">

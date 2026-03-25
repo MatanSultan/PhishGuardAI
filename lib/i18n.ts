@@ -9,7 +9,7 @@ export const translations = {
       pricing: 'Pricing',
       faq: 'FAQ',
       signIn: 'Sign In',
-      getStarted: 'Get Started',
+      getStarted: 'Book a demo',
       dashboard: 'Dashboard',
       training: 'Training Arena',
       memory: 'Memory Profile',
@@ -116,34 +116,34 @@ export const translations = {
     },
     // FAQ
     faq: {
-      title: 'Frequently Asked Questions',
-      subtitle: 'Everything you need to know about PhishGuard AI',
+      title: 'Frequently asked questions',
+      subtitle: 'What managers usually ask before they start',
       items: [
         {
-          question: 'How realistic are the phishing simulations?',
-          answer: 'Our AI generates highly realistic simulations based on current threat intelligence. They mirror real-world phishing attempts, including industry-specific scenarios.',
+          question: 'What do the scenarios actually look like?',
+          answer: 'They are built around everyday messages employees already get: invoices, parent messages, suppliers, deliveries, login warnings, and WhatsApp impersonation.',
         },
         {
-          question: 'Can I customize the training content?',
-          answer: 'Yes! You can create custom simulations, set difficulty levels, and tailor content to your organization\'s specific needs and industry.',
+          question: 'How quickly can we start?',
+          answer: 'Usually very quickly. You choose your organization type, invite employees, and can begin a pilot without a heavy rollout project.',
         },
         {
-          question: 'How does the adaptive learning work?',
-          answer: 'Our system tracks individual performance, identifies weakness patterns, and automatically adjusts training difficulty and focus areas for each user.',
+          question: 'Do we need a security team to run this?',
+          answer: 'No. The product is built for managers who are not security specialists, with reports and recommendations written in plain language.',
         },
         {
           question: 'Is the platform available in multiple languages?',
-          answer: 'Yes, PhishGuard AI fully supports English and Hebrew, with more languages coming soon. The interface adapts seamlessly between RTL and LTR layouts.',
+          answer: 'Yes. PhishGuard AI supports both Hebrew and English, including RTL and LTR layouts.',
         },
         {
-          question: 'What kind of reporting is available?',
-          answer: 'We provide comprehensive analytics including individual progress, team performance, trend analysis, and executive summary reports.',
+          question: 'What does a manager see at the end?',
+          answer: 'An organization Risk Score, weak topics, employees who need refreshers, and clear next-step recommendations.',
         },
       ],
     },
     // Footer
     footer: {
-      description: 'AI-powered phishing awareness training for modern organizations.',
+      description: 'Simple awareness training that helps employees spot phishing and gives managers a clear view of human risk.',
       product: 'Product',
       company: 'Company',
       legal: 'Legal',
@@ -151,9 +151,9 @@ export const translations = {
         features: 'Features',
         pricing: 'Pricing',
         integrations: 'Integrations',
-        changelog: 'Changelog',
+        changelog: 'Updates',
         about: 'About',
-        blog: 'Blog',
+        blog: 'Resources',
         careers: 'Careers',
         contact: 'Contact',
         privacy: 'Privacy',

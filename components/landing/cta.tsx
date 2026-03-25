@@ -10,23 +10,24 @@ export function CTA() {
   const copy =
     locale === 'he'
       ? {
-          title: 'מוכנים להראות ערך בפחות מ-10 דקות?',
-          subtitle: 'Book a demo / התחילו פיילוט ותראו איך ציון הסיכון והסיכום למנהלים עובדים עם תרחישים מקומיים.',
-          primary: 'תיאום דמו',
-          secondary: 'בדיקת סיכון צוות',
+          title: 'רוצים לראות ערך כבר בדמו הראשון?',
+          subtitle:
+            'בדמו קצר תראו ציון סיכון ארגוני, תרחישים מקומיים והמלצות שהמנהלים שלכם יכולים להבין מיד.',
+          primary: 'לתיאום דמו',
+          secondary: 'כניסה למערכת',
         }
       : {
-          title: 'Ready to show value in under 10 minutes?',
-          subtitle: 'Book a demo or start a pilot to see the Risk Score and manager summary on local scenarios.',
+          title: 'Want to show value in the first demo?',
+          subtitle:
+            'In a short demo you will see the Risk Score, local scenarios, and manager actions that are easy to explain.',
           primary: 'Book a demo',
-          secondary: 'Check your team risk',
+          secondary: 'Sign in',
         }
 
   return (
     <section className="border-t border-border bg-muted/30 py-20 lg:py-32" dir={dir}>
       <div className="container mx-auto px-4 lg:px-8">
         <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-primary to-primary/80 p-8 text-primary-foreground md:p-12 lg:p-16">
-          {/* Background Pattern */}
           <div className="absolute inset-0 opacity-10">
             <svg className="h-full w-full" xmlns="http://www.w3.org/2000/svg">
               <defs>
@@ -39,12 +40,10 @@ export function CTA() {
           </div>
 
           <div className="relative mx-auto max-w-2xl text-center">
-            {/* Icon */}
             <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-primary-foreground/10 backdrop-blur-sm">
               <Shield className="h-8 w-8" />
             </div>
 
-            {/* Content */}
             <h2 className="text-balance text-3xl font-bold tracking-tight sm:text-4xl">
               {copy.title}
             </h2>
@@ -52,7 +51,6 @@ export function CTA() {
               {copy.subtitle}
             </p>
 
-            {/* CTA */}
             <div className="mt-8 flex flex-col items-center justify-center gap-4 sm:flex-row">
               <Link href="/auth/signup">
                 <Button
@@ -64,7 +62,11 @@ export function CTA() {
                 </Button>
               </Link>
               <Link href="/admin">
-                <Button size="lg" variant="outline" className="h-12 px-8 text-base bg-primary/10 text-primary border-primary/40">
+                <Button
+                  size="lg"
+                  variant="outline"
+                  className="h-12 bg-primary/10 px-8 text-base text-primary border-primary/40"
+                >
                   {copy.secondary}
                 </Button>
               </Link>

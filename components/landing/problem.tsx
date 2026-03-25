@@ -8,19 +8,43 @@ export function Problem() {
   const copy =
     locale === 'he'
       ? {
-          title: 'למה צריך פתרון עכשיו',
+          title: 'למה הסיכון האנושי נשאר מתחת לרדאר',
           bullets: [
-            { icon: AlertTriangle, title: 'הודעות פישינג מתרבות', desc: 'חשבוניות, הודעות הורים, ספקים ווואטסאפ נראות אמיתיות.' },
-            { icon: EyeOff, title: 'למנהלים אין שקיפות', desc: 'קשה לדעת מי חלש ובאיזה ערוץ עד שזה מאוחר מדי.' },
-            { icon: Users, title: 'אין צוות סייבר', desc: 'מנהלי IT/תפעול צריכים מסלול מודרך ולא עוד פלטפורמה מורכבת.' },
+            {
+              icon: AlertTriangle,
+              title: 'הודעות מתחזות נראות אמינות',
+              desc: 'חשבוניות, הודעות מהורים, ספקים או בקשות ב-WhatsApp נראות כמו עבודה רגילה.',
+            },
+            {
+              icon: EyeOff,
+              title: 'קשה לדעת איפה הסיכון',
+              desc: 'בלי תמונה מסודרת קשה להבין מי נופל, באיזה ערוץ, ואיפה צריך לרענן.',
+            },
+            {
+              icon: Users,
+              title: 'אין זמן ואין צוות סייבר',
+              desc: 'ברוב הארגונים מי שמטפל בזה הוא מנהל תפעול, IT או משאבי אנוש וצריך פתרון פשוט.',
+            },
           ],
         }
       : {
-          title: 'Why teams still get phished',
+          title: 'Why human risk stays under the radar',
           bullets: [
-            { icon: AlertTriangle, title: 'Phishing keeps rising', desc: 'Invoices, parent messages, vendors, and WhatsApp look real.' },
-            { icon: EyeOff, title: 'Managers lack visibility', desc: 'Hard to see who is weak and which channel is risky until it hurts.' },
-            { icon: Users, title: 'No security team on staff', desc: 'Ops and IT leads need a guided path, not another complex tool.' },
+            {
+              icon: AlertTriangle,
+              title: 'Fake messages look legitimate',
+              desc: 'Invoices, parent messages, vendor requests, and WhatsApp chats blend into normal work.',
+            },
+            {
+              icon: EyeOff,
+              title: 'Managers cannot see where the risk sits',
+              desc: 'Without a clear view, it is hard to know who is vulnerable, by channel, and what to fix first.',
+            },
+            {
+              icon: Users,
+              title: 'Most teams do not have security staff',
+              desc: 'Ops, IT, or HR managers need something simple they can actually run.',
+            },
           ],
         }
 

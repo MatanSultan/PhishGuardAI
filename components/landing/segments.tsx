@@ -11,45 +11,85 @@ export function Segments() {
       ? {
           nursing: {
             title: 'בתי אבות',
-            points: ['חשבוניות ספקים ושינויי חשבון', 'בקשות וואטסאפ מדמויות מוכרות', 'תיאום משלוחים ותרופות'],
+            points: [
+              'חשבוניות ספקים ושינויי פרטי בנק',
+              'הודעות WhatsApp שמתחזות למנהלת או לבן משפחה',
+              'תיאום משלוחי תרופות, ציוד וטיפול',
+            ],
           },
           education: {
-            title: 'בתי ספר',
-            points: ['הורים ותרחישי התחזות הנהלה', 'אזהרות כניסה ל-Google/Microsoft', 'הודעות רשמיות ממשרד החינוך'],
+            title: 'חינוך',
+            points: [
+              'הודעות מהורים והתחזות להנהלה',
+              'אזהרות גישה ל-Google או Microsoft',
+              'עדכונים שנראים כאילו הגיעו ממשרד החינוך',
+            ],
           },
           nonprofit: {
             title: 'עמותות',
-            points: ['תרומות ומקדמות אירועים', 'ריכוז מתנדבים ובקשות קוד', 'הודעות רשות/רשם העמותות'],
+            points: [
+              'בקשות תרומה או תשלום שנראות אמיתיות',
+              'התחזות בריכוז מתנדבים והודעות דחופות',
+              'פניות רשמיות כביכול מרשם העמותות או מרשות',
+            ],
           },
           municipality: {
             title: 'רשויות מקומיות',
-            points: ['מכתבים רשמיים וגבייה', 'ספקים והעברת תשלומים', 'בקשות קוד ואישורי רכש'],
+            points: [
+              'הודעות רשמיות למראה, גבייה וארנונה',
+              'בקשות תשלום מספקים ושינויי חשבון',
+              'אישורים דחופים ממנהלים וקודי אימות',
+            ],
           },
           smb: {
             title: 'SMB',
-            points: ['חשבוניות ושינויי בנק', 'משלוחים ודמי טיפול', 'ספק חדש במספר וואטסאפ שונה'],
+            points: [
+              'חשבוניות מזויפות ושינויי פרטי ספק',
+              'הודעות משלוח ועמלות טיפול ב-SMS',
+              'ספק שכותב ממספר חדש ב-WhatsApp',
+            ],
           },
         }
       : {
           nursing: {
             title: 'Nursing homes',
-            points: ['Supplier invoices and bank changes', 'WhatsApp requests from “managers” or family', 'Delivery and medication coordination'],
+            points: [
+              'Supplier invoices and bank-detail changes',
+              'WhatsApp messages impersonating managers or family members',
+              'Medication, equipment, and delivery coordination',
+            ],
           },
           education: {
             title: 'Education networks',
-            points: ['Parent / principal impersonation', 'Google / Microsoft access warnings', 'Official-looking ministry notices'],
+            points: [
+              'Parent and principal impersonation',
+              'Google or Microsoft access warnings',
+              'Official-looking ministry notices',
+            ],
           },
           nonprofit: {
             title: 'Nonprofits',
-            points: ['Donation and event prepayments', 'Volunteer coordination scams', 'Registrar / authority notices'],
+            points: [
+              'Donation and payment requests that look real',
+              'Volunteer coordination scams and urgent messages',
+              'Registrar or authority notices',
+            ],
           },
           municipality: {
             title: 'Municipalities',
-            points: ['Official-looking billing/arnona', 'Vendor payment reroutes', 'Internal approval + code requests'],
+            points: [
+              'Official-looking billing and arnona notices',
+              'Vendor payment reroutes and bank-detail changes',
+              'Urgent approvals and verification-code requests',
+            ],
           },
           smb: {
             title: 'SMBs',
-            points: ['Invoice fraud and vendor changes', 'Courier fee SMS', 'New-number supplier on WhatsApp'],
+            points: [
+              'Invoice fraud and supplier-detail changes',
+              'Courier fee SMS messages',
+              'Suppliers reaching out from a new WhatsApp number',
+            ],
           },
         }
 
@@ -58,12 +98,12 @@ export function Segments() {
       <div className="container mx-auto px-4 lg:px-8">
         <div className="mx-auto max-w-3xl text-center">
           <h2 className="text-balance text-3xl font-bold tracking-tight sm:text-4xl">
-            {locale === 'he' ? 'מותאם לסגמנטים בישראל' : 'Built for the segments you serve'}
+            {locale === 'he' ? 'מרגיש רלוונטי מהדקה הראשונה' : 'Relevant from the first minute'}
           </h2>
           <p className="mt-3 text-pretty text-lg text-muted-foreground">
             {locale === 'he'
-              ? 'תרחישים, סיכומים ודו"חות שמרגישים מקומיים ומובנים למנהלים לא טכניים.'
-              : 'Scenarios, summaries, and reports that feel local and manager-friendly.'}
+              ? 'כל מגזר רואה תרחישים, סיכומים ודוחות שמדברים את היום-יום שלו.'
+              : 'Each segment sees scenarios, summaries, and reports that match its daily reality.'}
           </p>
         </div>
 

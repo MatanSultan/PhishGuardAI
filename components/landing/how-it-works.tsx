@@ -11,22 +11,54 @@ export function HowItWorks() {
     locale === 'he'
       ? {
           title: 'איך זה עובד',
-          subtitle: '4 צעדים פשוטים למנהלים ללא צוות אבטחה.',
+          subtitle: 'ארבעה צעדים פשוטים שמראים ערך מהר.',
           steps: [
-            { number: '01', title: 'סימולציה', description: 'AI יוצר תרחישים מקומיים במייל, SMS או וואטסאפ.' },
-            { number: '02', title: 'זיהוי', description: 'הצוות מחליט אם ההודעה בטוחה או פישינג.' },
-            { number: '03', title: 'למידה', description: 'משוב AI מסביר בעברית/אנגלית את הסימנים החשובים.' },
-            { number: '04', title: 'שיפור', description: 'ציון סיכון, רענון ממוקד, והמלצה לפעולה למנהלים.' },
+            {
+              number: '01',
+              title: 'מדמים',
+              description: 'המערכת שולחת תרחישים מציאותיים באימייל, SMS או WhatsApp לפי סוג הארגון.',
+            },
+            {
+              number: '02',
+              title: 'מזהים',
+              description: 'העובדים מסמנים אם מדובר בהודעה בטוחה או בניסיון התחזות.',
+            },
+            {
+              number: '03',
+              title: 'לומדים',
+              description: 'כל תשובה מקבלת הסבר קצר, ברור ורלוונטי לעבודה היומיומית.',
+            },
+            {
+              number: '04',
+              title: 'משפרים',
+              description: 'המנהל רואה ציון סיכון, עובדים לרענון והמלצה ברורה לצעד הבא.',
+            },
           ],
         }
       : {
           title: 'How it works',
-          subtitle: '4 simple steps for teams without a security staff.',
+          subtitle: 'Four simple steps that show value fast.',
           steps: [
-            { number: '01', title: 'Simulate', description: 'AI generates local email, SMS, or WhatsApp scenarios.' },
-            { number: '02', title: 'Detect', description: 'Employees decide if it is safe or phishing.' },
-            { number: '03', title: 'Learn', description: 'AI feedback explains the red flags in English or Hebrew.' },
-            { number: '04', title: 'Improve', description: 'Risk Score, targeted refreshers, and manager next steps.' },
+            {
+              number: '01',
+              title: 'Simulate',
+              description: 'The system sends realistic email, SMS, or WhatsApp scenarios based on your organization type.',
+            },
+            {
+              number: '02',
+              title: 'Detect',
+              description: 'Employees decide whether the message is safe or a phishing attempt.',
+            },
+            {
+              number: '03',
+              title: 'Learn',
+              description: 'Every answer gets short, practical feedback in Hebrew or English.',
+            },
+            {
+              number: '04',
+              title: 'Improve',
+              description: 'Managers see the Risk Score, who needs refreshers, and the next recommended step.',
+            },
           ],
         }
 
@@ -37,9 +69,7 @@ export function HowItWorks() {
           <h2 className="text-balance text-3xl font-bold tracking-tight sm:text-4xl">
             {copy.title}
           </h2>
-          <p className="mt-4 text-pretty text-lg text-muted-foreground">
-            {copy.subtitle}
-          </p>
+          <p className="mt-4 text-pretty text-lg text-muted-foreground">{copy.subtitle}</p>
         </div>
 
         <div className="relative mt-16">
