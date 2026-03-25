@@ -6,7 +6,21 @@ import { useLocale } from '@/lib/locale-context'
 import { Button } from '@/components/ui/button'
 
 export function CTA() {
-  const { t, dir } = useLocale()
+  const { locale, dir } = useLocale()
+  const copy =
+    locale === 'he'
+      ? {
+          title: 'מוכנים להראות ערך בפחות מ-10 דקות?',
+          subtitle: 'Book a demo / התחילו פיילוט ותראו איך ציון הסיכון והסיכום למנהלים עובדים עם תרחישים מקומיים.',
+          primary: 'תיאום דמו',
+          secondary: 'בדיקת סיכון צוות',
+        }
+      : {
+          title: 'Ready to show value in under 10 minutes?',
+          subtitle: 'Book a demo or start a pilot to see the Risk Score and manager summary on local scenarios.',
+          primary: 'Book a demo',
+          secondary: 'Check your team risk',
+        }
 
   return (
     <section className="border-t border-border bg-muted/30 py-20 lg:py-32" dir={dir}>
@@ -32,10 +46,10 @@ export function CTA() {
 
             {/* Content */}
             <h2 className="text-balance text-3xl font-bold tracking-tight sm:text-4xl">
-              {t.hero.title}
+              {copy.title}
             </h2>
             <p className="mx-auto mt-4 max-w-xl text-pretty text-lg opacity-90">
-              {t.hero.subtitle}
+              {copy.subtitle}
             </p>
 
             {/* CTA */}
@@ -45,8 +59,13 @@ export function CTA() {
                   size="lg"
                   className="group h-12 bg-primary-foreground px-8 text-base text-primary hover:bg-primary-foreground/90"
                 >
-                  {t.hero.cta}
+                  {copy.primary}
                   <ArrowRight className="ltr:ml-2 rtl:mr-2 h-4 w-4 transition-transform group-hover:ltr:translate-x-1 group-hover:rtl:-translate-x-1" />
+                </Button>
+              </Link>
+              <Link href="/admin">
+                <Button size="lg" variant="outline" className="h-12 px-8 text-base bg-primary/10 text-primary border-primary/40">
+                  {copy.secondary}
                 </Button>
               </Link>
             </div>

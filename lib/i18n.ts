@@ -20,12 +20,12 @@ export const translations = {
     },
     // Hero Section
     hero: {
-      badge: 'AI-Powered Security Training',
-      title: 'Train Your Team to Detect Phishing Attacks',
-      subtitle: 'PhishGuard AI uses advanced machine learning to create realistic phishing simulations, helping your organization build a human firewall against cyber threats.',
-      cta: 'Start Free Trial',
-      ctaSecondary: 'Watch Demo',
-      trustedBy: 'Trusted by security-conscious teams worldwide',
+      badge: 'Human-risk control for Israeli teams',
+      title: 'Make every employee your safest link.',
+      subtitle: 'Segment-aware phishing simulations, clear manager visibility, and simple training that works without a security team.',
+      cta: 'Book a demo',
+      ctaSecondary: 'Start a pilot',
+      trustedBy: 'Built for schools, municipalities, nonprofits, nursing homes, and SMBs',
     },
     // Features
     features: {

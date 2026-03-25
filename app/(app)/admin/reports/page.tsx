@@ -224,6 +224,10 @@ export default function AdminReportsPage() {
   const weakestCategoryLabel = data.weakestCategory
     ? formatCategoryLabel(data.weakestCategory.key, locale, data.organization.organization_type)
     : organizationProfile.focusTopics[0]
+  const riskLabel =
+    locale === 'he'
+      ? { low: 'נמוך', medium: 'בינוני', high: 'גבוה' }
+      : { low: 'Low', medium: 'Medium', high: 'High' }
   const riskyChannel = [...data.channelBreakdown].sort((left, right) => {
     if (left.correctRate !== right.correctRate) {
       return left.correctRate - right.correctRate
@@ -256,6 +260,10 @@ export default function AdminReportsPage() {
           refreshers: 'Who needs a refresher',
           nextAction: 'Next action',
         }
+  const riskCopy =
+    locale === 'he'
+      ? { title: 'ציון סיכון ארגוני', description: 'מדד מהיר לסיכון אנושי בארגון.' }
+      : { title: 'Organization Risk Score', description: 'Quick read on your human-risk posture.' }
 
   return (
     <div className="container mx-auto space-y-6 px-4 py-8 lg:px-8" dir={dir}>
@@ -405,6 +413,40 @@ export default function AdminReportsPage() {
                 {item}
               </div>
             ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card className="border-primary/30">
+        <CardHeader className="flex items-center justify-between">
+          <div>
+            <CardTitle>{riskCopy.title}</CardTitle>
+            <CardDescription>{riskCopy.description}</CardDescription>
+          </div>
+          <span className="rounded-full bg-primary/10 px-3 py-1 text-sm font-semibold text-primary">
+            {riskLabel[data.riskScore.level as keyof typeof riskLabel]}
+          </span>
+        </CardHeader>
+        <CardContent className="grid gap-4 md:grid-cols-[1fr_1.2fr]">
+          <div className="rounded-lg border border-border bg-muted/30 p-4">
+            <p className="text-sm text-muted-foreground">{locale === 'he' ? 'ציון נוכחי' : 'Current score'}</p>
+            <p className="mt-2 text-3xl font-bold">{data.riskScore.value}</p>
+            <p className="mt-2 text-sm text-muted-foreground">{data.riskScore.explanation}</p>
+          </div>
+          <div className="space-y-2">
+            {data.riskScore.reasons.length ? (
+              data.riskScore.reasons.map((reason) => (
+                <div key={reason} className="rounded-lg border border-border p-3 text-sm">
+                  {reason}
+                </div>
+              ))
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                {locale === 'he'
+                  ? 'הציון משקלל דיוק בפישינג והודעות לגיטימיות, מעורבות, ותחומים חלשים.'
+                  : 'Score blends phishing/safe accuracy, engagement, and weak domains.'}
+              </p>
+            )}
           </div>
         </CardContent>
       </Card>

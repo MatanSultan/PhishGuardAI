@@ -6,7 +6,27 @@ import { useLocale } from '@/lib/locale-context'
 import { Button } from '@/components/ui/button'
 
 export function Hero() {
-  const { t, dir } = useLocale()
+  const { locale, dir } = useLocale()
+  const copy =
+    locale === 'he'
+      ? {
+          badge: 'הפחתת סיכון אנושי לארגונים בישראל',
+          title: 'הפכו כל עובד לחוליה בטוחה.',
+          subtitle:
+            'סימולציות פישינג מציאותיות, שקיפות למנהלים, ואימון פשוט שלא דורש צוות סייבר.',
+          ctaPrimary: 'תיאום דמו',
+          ctaSecondary: 'התחלת פיילוט',
+          trustedBy: 'מותאם לבתי ספר, רשויות מקומיות, עמותות, בתי אבות ועסקים קטנים',
+        }
+      : {
+          badge: 'Human-risk control for Israeli teams',
+          title: 'Make every employee your safest link.',
+          subtitle:
+            'Realistic phishing simulations, manager-friendly visibility, and simple training that works without a security team.',
+          ctaPrimary: 'Book a demo',
+          ctaSecondary: 'Start a pilot',
+          trustedBy: 'Built for schools, municipalities, nonprofits, care homes, and SMBs',
+        }
 
   return (
     <section className="relative overflow-hidden" dir={dir}>
@@ -22,35 +42,37 @@ export function Hero() {
           {/* Badge */}
           <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-4 py-1.5">
             <Shield className="h-4 w-4 text-primary" />
-            <span className="text-sm font-medium text-primary">{t.hero.badge}</span>
+            <span className="text-sm font-medium text-primary">{copy.badge}</span>
           </div>
 
           {/* Main Headline */}
           <h1 className="text-balance text-4xl font-bold tracking-tight sm:text-5xl lg:text-6xl">
-            {t.hero.title}
+            {copy.title}
           </h1>
 
           {/* Subtitle */}
           <p className="mx-auto mt-6 max-w-2xl text-pretty text-lg text-muted-foreground lg:text-xl">
-            {t.hero.subtitle}
+            {copy.subtitle}
           </p>
 
           {/* CTAs */}
           <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
             <Link href="/auth/signup">
               <Button size="lg" className="group h-12 px-8 text-base">
-                {t.hero.cta}
+                {copy.ctaPrimary}
                 <ArrowRight className="ltr:ml-2 rtl:mr-2 h-4 w-4 transition-transform group-hover:ltr:translate-x-1 group-hover:rtl:-translate-x-1" />
               </Button>
             </Link>
-            <Button variant="outline" size="lg" className="h-12 px-8 text-base">
-              <Play className="ltr:mr-2 rtl:ml-2 h-4 w-4" />
-              {t.hero.ctaSecondary}
-            </Button>
+            <Link href="/#pricing">
+              <Button variant="outline" size="lg" className="h-12 px-8 text-base">
+                <Play className="ltr:mr-2 rtl:ml-2 h-4 w-4" />
+                {copy.ctaSecondary}
+              </Button>
+            </Link>
           </div>
 
           {/* Trust Badges */}
-          <p className="mt-12 text-sm text-muted-foreground">{t.hero.trustedBy}</p>
+          <p className="mt-12 text-sm text-muted-foreground">{copy.trustedBy}</p>
           <div className="mt-4 flex flex-wrap items-center justify-center gap-x-8 gap-y-4 opacity-50">
             {['TechCorp', 'SecureBank', 'GlobalTech', 'DataSafe', 'CyberShield'].map((company) => (
               <span key={company} className="text-lg font-semibold text-muted-foreground">

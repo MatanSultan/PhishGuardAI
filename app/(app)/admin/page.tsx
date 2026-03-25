@@ -642,6 +642,10 @@ export default function AdminPage() {
   const weakestCategoryLabel = weakestCategory
     ? formatCategoryLabel(weakestCategory.category, locale, data.organization.organization_type)
     : organizationProfile.focusTopics[0]
+  const riskLabel =
+    locale === 'he'
+      ? { low: 'נמוך', medium: 'בינוני', high: 'גבוה' }
+      : { low: 'Low', medium: 'Medium', high: 'High' }
   const riskyChannel = [...data.channelBreakdown].sort((left, right) => {
     if (left.correctRate !== right.correctRate) {
       return left.correctRate - right.correctRate
@@ -685,6 +689,18 @@ export default function AdminPage() {
           noRiskyChannel: 'There is not enough data yet to identify a risky channel.',
           demoTitle: 'Fast demo path',
           demoDescription: 'How to show value on one or two screens for this segment.',
+        }
+  const riskCopy =
+    locale === 'he'
+      ? {
+          title: 'ציון סיכון ארגוני',
+          description: 'מדד פשוט של רמת הסיכון האנושית בארגון.',
+          action: 'בדיקת סיכון מפורטת',
+        }
+      : {
+          title: 'Organization Risk Score',
+          description: 'A simple view of human-risk across the organization.',
+          action: 'View detailed risk',
         }
   const followUpDescription = !followUpEmployee
     ? managerQuickCopy.noUrgentFollowUp
@@ -840,6 +856,49 @@ export default function AdminPage() {
               {topic}
             </div>
           ))}
+        </CardContent>
+      </Card>
+
+      <Card className="border-primary/30">
+        <CardHeader className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <CardTitle>{riskCopy.title}</CardTitle>
+            <CardDescription>{riskCopy.description}</CardDescription>
+          </div>
+          <Link href="/admin/reports">
+            <Button variant="outline" size="sm">
+              {riskCopy.action}
+            </Button>
+          </Link>
+        </CardHeader>
+        <CardContent className="grid gap-4 md:grid-cols-[1fr_1.2fr]">
+          <div className="rounded-lg border border-border bg-muted/30 p-4">
+            <p className="text-sm text-muted-foreground">
+              {locale === 'he' ? 'ציון נוכחי' : 'Current score'}
+            </p>
+            <div className="mt-2 flex items-baseline gap-2">
+              <span className="text-4xl font-bold">{data.riskScore.value}</span>
+              <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">
+                {riskLabel[data.riskScore.level]}
+              </span>
+            </div>
+            <p className="mt-3 text-sm text-muted-foreground">{data.riskScore.explanation}</p>
+          </div>
+          <div className="space-y-2">
+            {data.riskScore.reasons.length ? (
+              data.riskScore.reasons.map((reason) => (
+                <div key={reason} className="rounded-lg border border-border p-3 text-sm">
+                  {reason}
+                </div>
+              ))
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                {locale === 'he'
+                  ? 'ציון הסיכון מתבסס על דיוק, מעורבות ותחומים חלשים.'
+                  : 'Risk score is based on accuracy, engagement, and weak domains.'}
+              </p>
+            )}
+          </div>
         </CardContent>
       </Card>
 

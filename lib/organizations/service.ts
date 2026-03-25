@@ -38,12 +38,20 @@ export interface OrganizationMemberRecord {
 }
 
 function normalizeOrganizationSlug(input: string) {
-  return input
+  const base = input
     .trim()
     .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
+    // allow any letter/number from any script; collapse the rest to hyphens
+    .replace(/[^\p{L}\p{N}]+/gu, '-')
     .replace(/^-+|-+$/g, '')
     .replace(/-{2,}/g, '-')
+
+  if (base) {
+    return base
+  }
+
+  // Fallback for names written entirely in non-Latin characters (e.g., Hebrew)
+  return `org-${randomBytes(2).toString('hex')}`
 }
 
 function buildUniqueSlugCandidate(baseSlug: string) {

@@ -79,7 +79,7 @@ const companyCopy = {
     admin: {
       loadError: 'We could not load the company admin dashboard.',
       title: 'Team Admin Dashboard',
-      subtitle: 'A real-time organizational view of phishing-awareness performance.',
+      subtitle: 'Reduce human risk with clear actions, no security jargon required.',
       accessTitle: 'Administrator access required',
       accessDescription: 'This page is only available to organization administrators.',
       nextStepTitle: 'Next step: invite your employees',

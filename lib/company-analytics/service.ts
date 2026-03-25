@@ -6,6 +6,7 @@ import type {
   OrganizationMemberStatus,
   OrganizationType,
   SimulationCategory,
+  SupportedLocale,
 } from '@/lib/constants'
 import type { Database, TableRow } from '@/lib/database.types'
 import {
@@ -89,12 +90,130 @@ export interface CompanyAttentionFlag {
   reasons: Array<'low_accuracy' | 'inactive' | 'repeated_category_failure'>
 }
 
+export interface OrganizationRiskScore {
+  value: number
+  level: 'low' | 'medium' | 'high'
+  explanation: string
+  reasons: string[]
+}
+
 function safeDivide(value: number, total: number) {
   return total > 0 ? value / total : 0
 }
 
 function ratioToPercent(value: number) {
   return Number.isFinite(value) ? Math.round(value * 100) : 0
+}
+
+function computeOrganizationRiskScore(
+  overview: {
+    totalEmployees: number
+    phishingDetectionRate: number
+    safeDetectionRate: number
+  },
+  weakestCategories: Array<{ category: SimulationCategory; count: number }>,
+  channelBreakdown: Array<{ key: Channel; attempts: number; correctRate: number }>,
+  lowEngagement: ReturnType<typeof buildLowEngagementMembers>,
+  attentionFlags: CompanyAttentionFlag[],
+  locale: SupportedLocale,
+): OrganizationRiskScore {
+  const avgDetection = (overview.phishingDetectionRate + overview.safeDetectionRate) / 2
+  const lowEngagementRatio = safeDivide(lowEngagement.length, Math.max(1, overview.totalEmployees))
+  const weakest = weakestCategories[0]
+  const weakestPenalty =
+    weakest && overview.totalEmployees > 0
+      ? Math.min(15, Math.round((weakest.count / overview.totalEmployees) * 30))
+      : 0
+  const repeatedPenalty = attentionFlags.some((flag) => flag.reasons?.includes('repeated_category_failure'))
+    ? 8
+    : 0
+  const inactivityPenalty = Math.min(25, Math.round(lowEngagementRatio * 40))
+  const riskiestChannel = [...channelBreakdown].sort((a, b) => a.correctRate - b.correctRate)[0] ?? null
+  const channelPenalty = riskiestChannel ? Math.round((100 - riskiestChannel.correctRate) * 0.08) : 0
+  const hasSignals =
+    channelBreakdown.length > 0 ||
+    weakestCategories.length > 0 ||
+    overview.phishingDetectionRate > 0 ||
+    overview.safeDetectionRate > 0 ||
+    lowEngagement.length > 0 ||
+    attentionFlags.length > 0
+
+  if (!hasSignals) {
+    const reasons =
+      locale === 'he'
+        ? ['עדיין אין מספיק נתונים — הריצו סימולציה ראשונה כדי לחדד את הציון.']
+        : ['Not enough data yet — run your first simulation to firm up the score.']
+
+    return {
+      value: 65,
+      level: 'medium',
+      explanation:
+        locale === 'he'
+          ? 'ציון פתיחה מחושב על בסיס נתוני ברירת מחדל. התחילו תרגול כדי לקבל תמונת מצב מדויקת.'
+          : 'Preliminary score based on limited data. Start a simulation to get a precise view.',
+      reasons,
+    }
+
+  }
+
+  const rawScore = Math.max(
+    0,
+    Math.min(
+      100,
+      Math.round(
+        avgDetection - inactivityPenalty - weakestPenalty - repeatedPenalty - channelPenalty,
+      ),
+    ),
+  )
+
+  const level: OrganizationRiskScore['level'] =
+    rawScore >= 75 ? 'low' : rawScore >= 50 ? 'medium' : 'high'
+
+  const reasons: string[] = []
+  if (weakest?.category) {
+    reasons.push(
+      locale === 'he'
+        ? `חולשה בולטת ב-${formatCategoryLabel(weakest.category, locale, null)}`
+        : `Repeated misses in ${formatCategoryLabel(weakest.category, locale, null)}`,
+    )
+  }
+  if (lowEngagement.length > 0) {
+    reasons.push(
+      locale === 'he'
+        ? `${lowEngagement.length} עובדים כמעט ולא מתאמנים לאחרונה`
+        : `${lowEngagement.length} employees have little recent activity`,
+    )
+  }
+  if (riskiestChannel) {
+    reasons.push(
+      locale === 'he'
+        ? `דיוק נמוך בערוץ ${formatChannelLabel(riskiestChannel.key, locale)}`
+        : `Low accuracy on ${formatChannelLabel(riskiestChannel.key, locale)}`,
+    )
+  }
+  if (attentionFlags.some((flag) => flag.reasons?.includes('repeated_category_failure'))) {
+    reasons.push(locale === 'he' ? 'טעויות חוזרות באותו תחום' : 'Repeated failures in the same category')
+  }
+  if (!reasons.length) {
+    reasons.push(
+      locale === 'he'
+        ? 'הדיוק והמעורבות יציבים; המשיכו לתרגל כדי לשמור על רמת סיכון נמוכה.'
+        : 'Accuracy and engagement look steady; keep training to maintain low risk.',
+    )
+  }
+
+  const explanation =
+    locale === 'he'
+      ? `רמת הסיכון היא ${level === 'low' ? 'נמוכה' : level === 'medium' ? 'בינונית' : 'גבוהה'} בגלל ${reasons.join(' · ')}.`
+      : `Risk is ${level} because ${reasons.join(' · ')}.`
+
+
+  return {
+    value: rawScore,
+    level,
+    explanation,
+    reasons: reasons.slice(0, 3),
+  }
 }
 
 function getDaysSince(date: string | null) {
@@ -792,6 +911,14 @@ export async function getOrganizationDashboardData(
     weakestCategories,
     lowEngagement,
   )
+  const riskScore = computeOrganizationRiskScore(
+    overview,
+    weakestCategories,
+    channelBreakdown,
+    lowEngagement,
+    attentionFlags,
+    adminBundle.profile.preferred_language,
+  )
   const aiSummary = await generateOrganizationRiskSummary({
     locale: adminBundle.profile.preferred_language,
     organizationName: context.organization.name,
@@ -804,6 +931,7 @@ export async function getOrganizationDashboardData(
     employeesNeedingSupport,
     companyRecommendations,
     attentionFlags,
+    riskScore,
   })
 
   return {
@@ -817,6 +945,7 @@ export async function getOrganizationDashboardData(
     recentActivity: buildRecentActivity(attempts, memberMetrics),
     companyRecommendations,
     aiSummary,
+    riskScore,
     leaderboardPreview,
     teamProgressTrend: buildTrend(attempts),
     lowEngagement,
@@ -848,6 +977,8 @@ export async function getOrganizationReportsData(
   const memberMetrics = memberRecords.map(toMemberMetric)
   const attempts = await getOrganizationAttempts(supabase, memberRecords)
   const filteredAttempts = applyAttemptFilters(attempts, filters)
+  const phishingAttempts = filteredAttempts.filter((attempt) => attempt.simulation?.is_phishing)
+  const safeAttempts = filteredAttempts.filter((attempt) => attempt.simulation && !attempt.simulation.is_phishing)
   const filteredMemberMetrics = buildFilteredMemberMetrics(memberMetrics, filteredAttempts, filters)
   const categoryBreakdown = groupAccuracyBy(
     filteredAttempts,
@@ -879,6 +1010,26 @@ export async function getOrganizationReportsData(
     return right.attempts - left.attempts
   })[0] ?? null
   const lowEngagement = buildLowEngagementMembers(filteredMemberMetrics)
+  const attentionFlags = buildAttentionFlags(filteredMemberMetrics, filteredAttempts)
+  const riskScore = computeOrganizationRiskScore(
+    {
+      totalEmployees: filteredMemberMetrics.length,
+      phishingDetectionRate: ratioToPercent(
+        safeDivide(
+          phishingAttempts.filter((attempt) => attempt.is_correct).length,
+          phishingAttempts.length,
+        ),
+      ),
+      safeDetectionRate: ratioToPercent(
+        safeDivide(safeAttempts.filter((attempt) => attempt.is_correct).length, safeAttempts.length),
+      ),
+    },
+    weakestCategory ? [{ category: weakestCategory.key, count: weakestCategory.attempts }] : [],
+    channelBreakdown,
+    lowEngagement,
+    attentionFlags,
+    locale,
+  )
   const employeesNeedingRefreshers = filteredMemberMetrics.filter(
     (member) => member.status === 'active' && member.totalAttempts >= 3 && member.accuracyRate < 65,
   )
@@ -948,8 +1099,8 @@ export async function getOrganizationReportsData(
   ].filter(Boolean)
   const plainLanguageSummary =
     locale === 'he'
-      ? `${organizationProfile.label}: הדוח הזה שם דגש על ${weakestCategory ? formatCategoryLabel(weakestCategory.key, locale, context.organization.organization_type) : organizationProfile.focusTopics[0]}, על ${riskiestChannel ? formatChannelLabel(riskiestChannel.key, locale) : 'הערוצים המרכזיים'}, ועל צעדים מעשיים למנהלים לא טכניים. דוגמה רלוונטית: ${organizationExperience.scenarioExamples[0]}`
-      : `${organizationProfile.label}: this report keeps the focus on ${weakestCategory ? formatCategoryLabel(weakestCategory.key, locale, context.organization.organization_type) : organizationProfile.focusTopics[0]}, the ${riskiestChannel ? formatChannelLabel(riskiestChannel.key, locale).toLowerCase() : 'main communication channels'}, and practical next steps for non-technical managers. Relevant example: ${organizationExperience.scenarioExamples[0]}`
+      ? `${organizationProfile.label}: ציון הסיכון הוא ${riskScore.value}/100 (${riskScore.level}). הדוח הזה שם דגש על ${weakestCategory ? formatCategoryLabel(weakestCategory.key, locale, context.organization.organization_type) : organizationProfile.focusTopics[0]}, על ${riskiestChannel ? formatChannelLabel(riskiestChannel.key, locale) : 'הערוצים המרכזיים'}, ועל צעדים מעשיים למנהלים לא טכניים. דוגמה רלוונטית: ${organizationExperience.scenarioExamples[0]}`
+      : `${organizationProfile.label}: Risk Score is ${riskScore.value}/100 (${riskScore.level}). This report keeps the focus on ${weakestCategory ? formatCategoryLabel(weakestCategory.key, locale, context.organization.organization_type) : organizationProfile.focusTopics[0]}, the ${riskiestChannel ? formatChannelLabel(riskiestChannel.key, locale).toLowerCase() : 'main communication channels'}, and practical next steps for non-technical managers. Relevant example: ${organizationExperience.scenarioExamples[0]}`
 
   return {
     organization: context.organization,
@@ -969,6 +1120,15 @@ export async function getOrganizationReportsData(
       averageAccuracy: ratioToPercent(
         safeDivide(filteredAttempts.filter((attempt) => attempt.is_correct).length, filteredAttempts.length),
       ),
+      phishingDetectionRate: ratioToPercent(
+        safeDivide(
+          phishingAttempts.filter((attempt) => attempt.is_correct).length,
+          phishingAttempts.length,
+        ),
+      ),
+      safeDetectionRate: ratioToPercent(
+        safeDivide(safeAttempts.filter((attempt) => attempt.is_correct).length, safeAttempts.length),
+      ),
       activeEmployees: getRecentActiveEmployeeCount(filteredMemberMetrics),
     },
     employeePerformance: [...filteredMemberMetrics].sort(sortLeaderboard),
@@ -983,5 +1143,6 @@ export async function getOrganizationReportsData(
     mostImproved: buildMostImprovedEmployees(filteredAttempts, filteredMemberMetrics),
     lowEngagement,
     recentActivity: buildRecentActivity(filteredAttempts, filteredMemberMetrics),
+    riskScore,
   }
 }

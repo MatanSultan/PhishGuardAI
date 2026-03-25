@@ -76,6 +76,12 @@ interface OrganizationSummaryInput {
     reasons: Array<'low_accuracy' | 'inactive' | 'repeated_category_failure'>
   }>
   companyRecommendations: OrganizationRecommendationInput[]
+  riskScore: {
+    value: number
+    level: 'low' | 'medium' | 'high'
+    explanation: string
+    reasons: string[]
+  }
 }
 
 interface PersonalSummaryInput {
@@ -306,11 +312,12 @@ function buildFallbackOrganizationSummary(
 
   const summary =
     input.locale === 'he'
-      ? `${input.organizationName} צריך כרגע חיזוק ממוקד סביב ${weakestCategory ? formatCategoryLabel(weakestCategory.category, input.locale, input.organizationType) : 'תחומי הסיכון המרכזיים'}, עם ${lowEngagementCount} עובדים במעורבות נמוכה.`
-      : `${input.organizationName} currently needs focused reinforcement around ${weakestCategory ? formatCategoryLabel(weakestCategory.category, input.locale, input.organizationType) : 'its main risk areas'}, with ${lowEngagementCount} employees showing low engagement.`
+      ? `ציון הסיכון של הארגון הוא ${input.riskScore.value}/100 (${input.riskScore.level}). ${input.organizationName} צריך חיזוק סביב ${weakestCategory ? formatCategoryLabel(weakestCategory.category, input.locale, input.organizationType) : 'תחומי הסיכון המרכזיים'}, עם ${lowEngagementCount} עובדים במעורבות נמוכה.`
+      : `${input.organizationName} risk score is ${input.riskScore.value}/100 (${input.riskScore.level}). Focus reinforcement on ${weakestCategory ? formatCategoryLabel(weakestCategory.category, input.locale, input.organizationType) : 'the main risk areas'}, with ${lowEngagementCount} employees showing low engagement.`
 
   const riskSignals = sliceNonEmpty(
     [
+      input.riskScore.explanation,
       weakestCategory
         ? input.locale === 'he'
           ? `${formatCategoryLabel(weakestCategory.category, input.locale, input.organizationType)} הוא תחום החולשה המוביל בצוות.`
@@ -539,6 +546,7 @@ export async function generateOrganizationRiskSummary(
     employeesNeedingSupport: input.employeesNeedingSupport,
     attentionFlags: input.attentionFlags,
     companyRecommendations: input.companyRecommendations,
+    riskScore: input.riskScore,
   }).catch(() => null)
 
   return groqSummary ?? fallback

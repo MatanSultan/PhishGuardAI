@@ -116,6 +116,7 @@ export function buildOrganizationSummarySystemPrompt(locale: 'en' | 'he') {
     'Summarize team-level phishing-awareness patterns using only the provided analytics.',
     'Write for a busy non-technical manager. Keep the language practical, direct, and free of security jargon.',
     'When organization context is provided, adapt the summary to that segment and prefer realistic Israeli workplace examples.',
+    'Reference the provided risk score and explain the top reasons simply.',
     'Call out the most relevant risky topics, channels, and follow-up actions for that segment in plain language.',
     'Do not invent statistics or expose content outside the provided organization context.',
     'Do not provide offensive security guidance or attack instructions.',
