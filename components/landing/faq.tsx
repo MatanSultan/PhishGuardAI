@@ -14,63 +14,63 @@ export function FAQ() {
     locale === 'he'
       ? {
           title: 'שאלות נפוצות',
-          subtitle: 'השאלות שמנהלים שואלים לפני שמתחילים',
+          subtitle: 'תשובות קצרות לשאלות שעולות לפני דמו או פיילוט',
           items: [
             {
               question: 'איך נראים התרחישים בפועל?',
               answer:
-                'התרחישים מבוססים על הודעות שהעובדים באמת פוגשים: חשבוניות, הודעות מהורים, ספקים, משלוחים, התראות כניסה והודעות WhatsApp.',
+                'כמו הודעות שעובדים באמת מקבלים: חשבוניות, הודעות מהורים, ספקים, משלוחים, התראות כניסה ו-WhatsApp.',
             },
             {
               question: 'כמה מהר אפשר להתחיל?',
               answer:
-                'בדרך כלל מהר מאוד. בוחרים סוג ארגון, מזמינים עובדים ומתחילים לראות תמונה ראשונה בלי פרויקט הטמעה כבד.',
+                'בדרך כלל מהר. בוחרים סוג ארגון, מזמינים עובדים ורואים תמונת סיכון ראשונית בלי פרויקט כבד.',
             },
             {
               question: 'צריך צוות סייבר כדי לעבוד עם המערכת?',
               answer:
-                'לא. המערכת נבנתה למנהלים שאינם אנשי סייבר, עם דוחות והמלצות בשפה פשוטה.',
+                'לא. המערכת נבנתה למנהלים שאינם אנשי סייבר, עם הסברים ודוחות בשפה פשוטה.',
             },
             {
               question: 'המערכת תומכת בעברית ובאנגלית?',
               answer:
-                'כן. הממשק, הסימולציות והסיכומים עובדים בעברית ובאנגלית, עם תמיכה מלאה ב-RTL וב-LTR.',
+                'כן. הממשק, הסימולציות והסיכומים זמינים בעברית ובאנגלית, עם תמיכה מלאה ב-RTL ו-LTR.',
             },
             {
               question: 'מה המנהל רואה בסוף?',
               answer:
-                'ציון סיכון ארגוני, תחומים חלשים, עובדים שצריכים רענון והמלצות ברורות לצעד הבא.',
+                'ציון סיכון ארגוני, תחומים חלשים, מי צריך רענון ומה כדאי לעשות עכשיו.',
             },
           ],
         }
       : {
           title: 'Frequently asked questions',
-          subtitle: 'What managers usually ask before they start',
+          subtitle: 'Short answers before a demo or pilot',
           items: [
             {
               question: 'What do the scenarios actually look like?',
               answer:
-                'They are built around everyday messages employees already get: invoices, parent messages, suppliers, deliveries, login warnings, and WhatsApp impersonation.',
+                'Like the messages employees already get: invoices, parent messages, suppliers, deliveries, login warnings, and WhatsApp.',
             },
             {
               question: 'How quickly can we start?',
               answer:
-                'Usually very quickly. You choose your organization type, invite employees, and can begin a pilot without a heavy rollout project.',
+                'Usually fast. Choose your organization type, invite employees, and get an initial risk picture without a heavy rollout.',
             },
             {
               question: 'Do we need a security team to run this?',
               answer:
-                'No. The product is built for managers who are not security specialists, with reports and recommendations written in plain language.',
+                'No. The product is built for managers who are not security specialists, with plain-language guidance and reports.',
             },
             {
               question: 'Is the platform available in multiple languages?',
               answer:
-                'Yes. PhishGuard AI supports both Hebrew and English, including RTL and LTR layouts.',
+                'Yes. The interface, simulations, and summaries are available in Hebrew and English, with full RTL and LTR support.',
             },
             {
               question: 'What does a manager see at the end?',
               answer:
-                'An organization Risk Score, weak topics, employees who need refreshers, and clear next-step recommendations.',
+                'An organization Risk Score, weak areas, who needs a refresher, and what to do next.',
             },
           ],
         }

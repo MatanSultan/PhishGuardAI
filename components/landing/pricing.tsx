@@ -11,19 +11,19 @@ export function Pricing() {
   const copy =
     locale === 'he'
       ? {
-          title: 'תמחור פשוט שמתחבר לערך',
-          subtitle: 'קל להבין מה מקבלים, וקל להתחיל בפיילוט או בהטמעה רחבה יותר.',
+          title: 'מחיר ברור, ערך ברור',
+          subtitle: 'בוחרים את רמת הליווי שמתאימה לארגון ומתחילים מהר - מפיילוט קצר ועד פריסה רחבה יותר.',
           popularBadge: 'המסלול המומלץ',
           plans: [
             {
               name: 'Starter / SMB',
               price: 'ILS 1,200-1,800',
               period: '/חודש',
-              description: 'לעסקים קטנים וארגונים עד כ-80 עובדים',
+              description: 'לעסקים קטנים וארגונים בתחילת הדרך, עד כ-80 עובדים',
               features: [
                 'סימולציות באימייל, SMS ו-WhatsApp בעברית ובאנגלית',
-                'ציון סיכון ארגוני ודוחות בסיס למנהל',
-                'תרחישים מותאמים למגזר ולשימוש מהיר בפיילוט',
+                'ציון סיכון ארגוני ודוחות ניהול בסיסיים',
+                'תרחישים מותאמים למגזר ועלייה מהירה לפיילוט',
                 'תמיכה במייל והקמה מהירה',
               ],
               cta: 'התחלת פיילוט',
@@ -33,12 +33,12 @@ export function Pricing() {
               name: 'Growth / Organization',
               price: 'ILS 3,200-4,800',
               period: '/חודש',
-              description: 'לארגונים עד כ-300 עובדים שצריכים תמונת מצב מלאה',
+              description: 'לארגונים שצריכים תמונת מצב ברורה, עד כ-300 עובדים',
               features: [
                 'סיכומי מנהלים עם המלצות פעולה פשוטות',
                 'תובנות לפי ערוץ, נושא וקבוצות עובדים',
                 'תרחישים מותאמים לחינוך, רשויות, עמותות, בתי אבות ו-SMB',
-                'תמיכה מועדפת וליווי עליה לאוויר',
+                'תמיכה מועדפת וליווי לעלייה לאוויר',
               ],
               cta: 'לתיאום דמו',
               popular: true,
@@ -47,7 +47,7 @@ export function Pricing() {
               name: 'Managed add-on',
               price: '+ILS 1,200-2,000',
               period: '/חודש',
-              description: 'לארגונים בלי איש סייבר פנימי',
+              description: 'לצוותים שרוצים ליווי שוטף בלי איש סייבר פנימי',
               features: [
                 'רענון תכנים רבעוני ועדכון תרחישים',
                 'מפגשי מנהלים והדרכות קצרות לעובדים',
@@ -59,18 +59,18 @@ export function Pricing() {
           ],
         }
       : {
-          title: 'Pricing that is easy to explain',
-          subtitle: 'Clear plans, clear value, and a simple path to pilot or rollout.',
+          title: 'Clear pricing, clear value',
+          subtitle: 'Choose the level of rollout and support you need, from a fast pilot to a broader rollout.',
           popularBadge: 'Most popular',
           plans: [
             {
               name: 'Starter / SMB',
               price: 'ILS 1,200-1,800',
               period: '/mo',
-              description: 'For small teams and organizations up to about 80 employees',
+              description: 'For small teams and early-stage organizations, up to about 80 employees',
               features: [
                 'Email, SMS, and WhatsApp simulations in Hebrew and English',
-                'Organization Risk Score and baseline manager reports',
+                'Organization Risk Score and basic manager reports',
                 'Segment-aware scenarios for a fast pilot launch',
                 'Email support and quick setup',
               ],
@@ -81,12 +81,12 @@ export function Pricing() {
               name: 'Growth / Organization',
               price: 'ILS 3,200-4,800',
               period: '/mo',
-              description: 'For organizations up to about 300 employees that need full manager visibility',
+              description: 'For organizations that need clear manager visibility, up to about 300 employees',
               features: [
                 'Manager summaries with practical next actions',
                 'Insights by channel, topic, and employee group',
                 'Organization-tuned simulations for Israeli segments',
-                'Priority support and light onboarding help',
+                'Priority support and rollout guidance',
               ],
               cta: 'Book a demo',
               popular: true,
@@ -95,7 +95,7 @@ export function Pricing() {
               name: 'Managed add-on',
               price: '+ILS 1,200-2,000',
               period: '/mo',
-              description: 'For teams without in-house security staff',
+              description: 'For teams that want ongoing guidance without in-house security staff',
               features: [
                 'Quarterly scenario refresh and content tuning',
                 'Manager workshops and short employee sessions',

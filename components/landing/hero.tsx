@@ -11,9 +11,9 @@ export function Hero() {
     locale === 'he'
       ? {
           badge: 'הפחתת סיכון אנושי לארגונים בישראל',
-          title: 'תוך דקות תדעו איפה העובדים שלכם עלולים ליפול',
+          title: 'תוך דקות תראו איפה הארגון שלכם חשוף לפישינג',
           subtitle:
-            'PhishGuard AI מדמה הודעות מתחזות אמיתיות, מאמן עובדים בשפה פשוטה, ונותן למנהלים תמונה ברורה בלי להקים צוות סייבר.',
+            'PhishGuard AI מדמה הודעות מתחזות אמיתיות, מאמן עובדים, ומראה למנהלים מי צריך רענון ואיפה נכון להתחיל - בלי צוות סייבר.',
           ctaPrimary: 'לתיאום דמו',
           ctaSecondary: 'למסלולים ומחירים',
           trustedBy: 'מותאם לבתי ספר, רשויות מקומיות, עמותות, בתי אבות ועסקים קטנים',
@@ -32,9 +32,9 @@ export function Hero() {
         }
       : {
           badge: 'Practical human-risk reduction for Israeli teams',
-          title: 'See where your employees are likely to fall for phishing',
+          title: 'See where your organization is exposed to phishing in minutes',
           subtitle:
-            'PhishGuard AI simulates realistic attacks, trains employees in plain language, and gives managers clear visibility without a security team.',
+            'PhishGuard AI simulates realistic phishing messages, trains employees, and shows managers who needs a refresher and where to start, without a security team.',
           ctaPrimary: 'Book a demo',
           ctaSecondary: 'See pricing',
           trustedBy: 'Built for schools, municipalities, nonprofits, care homes, and SMBs',

@@ -10,16 +10,16 @@ export function CTA() {
   const copy =
     locale === 'he'
       ? {
-          title: 'רוצים לראות ערך כבר בדמו הראשון?',
+          title: 'רוצים לראות בתוך כמה דקות איפה הסיכון אצלכם?',
           subtitle:
-            'בדמו קצר תראו ציון סיכון ארגוני, תרחישים מקומיים והמלצות שהמנהלים שלכם יכולים להבין מיד.',
+            'בדמו קצר תראו תרחישים שמתאימים לארגון שלכם, ציון סיכון ברור והמלצות שמנהלים יכולים ליישם מיד.',
           primary: 'לתיאום דמו',
           secondary: 'כניסה למערכת',
         }
       : {
-          title: 'Want to show value in the first demo?',
+          title: 'Want to see where your team is exposed in minutes?',
           subtitle:
-            'In a short demo you will see the Risk Score, local scenarios, and manager actions that are easy to explain.',
+            'In a short demo you will see realistic local scenarios, a clear Risk Score, and practical next steps for managers.',
           primary: 'Book a demo',
           secondary: 'Sign in',
         }
