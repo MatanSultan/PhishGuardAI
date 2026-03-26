@@ -55,6 +55,21 @@ interface SimulationFallbackOptions {
 
 type GeneratedSimulationSource = 'groq' | 'fallback'
 
+const TRAINING_AI_TIMEOUT_MS = 1200
+
+async function runFastAiTask<T>(task: () => Promise<T | null>, timeoutMs = TRAINING_AI_TIMEOUT_MS) {
+  try {
+    return await Promise.race<T | null>([
+      task(),
+      new Promise<null>((resolve) => {
+        setTimeout(() => resolve(null), timeoutMs)
+      }),
+    ])
+  } catch {
+    return null
+  }
+}
+
 function simulationToInsert(
   simulation: SimulationGeneration,
   locale: SupportedLocale,
@@ -804,15 +819,18 @@ export async function getNextTrainingSimulation(
     context.recentAttempts,
     organizationContext?.organization.organization_type,
   )
+  const shouldGenerateFreshSimulation = !reusableCandidate || exactCandidates.length < 2
 
   let simulation = reusableCandidate
 
-  if (!simulation || context.recentAttempts.length >= 2) {
-    const generatedSimulation = await generateSimulationWithGroq(
-      selection.locale,
-      selection,
-      formatTrainingContext(trainingContext),
-    ).catch(() => null)
+  if (shouldGenerateFreshSimulation) {
+    const generatedSimulation = await runFastAiTask(() =>
+      generateSimulationWithGroq(
+        selection.locale,
+        selection,
+        formatTrainingContext(trainingContext),
+      ),
+    )
     const groqSimulation =
       generatedSimulation && isAlignedGeneratedSimulation(generatedSimulation, selection)
         ? generatedSimulation
@@ -877,6 +895,7 @@ export async function submitTrainingAttempt(
     ...context,
     organizationProfile,
   }
+  const formattedTrainingContext = formatTrainingContext(trainingContext)
 
   const feedbackPayload = {
     locale: bundle.profile.preferred_language,
@@ -884,11 +903,32 @@ export async function submitTrainingAttempt(
     userAnswer: input.userAnswer,
     isCorrect,
     userReason: input.userReason ?? '',
-    context: formatTrainingContext(trainingContext),
+    context: formattedTrainingContext,
   }
 
+  const memoryPayload = {
+    locale: bundle.profile.preferred_language,
+    simulation,
+    attempt: {
+      userAnswer: input.userAnswer,
+      isCorrect,
+      confidence: input.confidence ?? null,
+      userReason: input.userReason ?? '',
+    },
+    context: formattedTrainingContext,
+  }
+
+  const [generatedFeedback, generatedMemoryUpdate] = await Promise.all([
+    runFastAiTask(() =>
+      generateFeedbackWithGroq(bundle.profile.preferred_language, feedbackPayload),
+    ),
+    runFastAiTask(() =>
+      generateMemoryUpdateWithGroq(bundle.profile.preferred_language, memoryPayload),
+    ),
+  ])
+
   const feedback =
-    (await generateFeedbackWithGroq(bundle.profile.preferred_language, feedbackPayload).catch(() => null)) ??
+    generatedFeedback ??
     buildFallbackFeedback(bundle.profile.preferred_language, simulation, isCorrect)
 
   const attempt = await insertAttempt(supabase, {
@@ -902,31 +942,21 @@ export async function submitTrainingAttempt(
     response_time_ms: input.responseTimeMs ?? null,
   })
 
-  const memoryPayload = {
-    locale: bundle.profile.preferred_language,
-    simulation,
-    attempt: {
-      userAnswer: input.userAnswer,
-      isCorrect,
-      confidence: input.confidence ?? null,
-      userReason: input.userReason ?? '',
-    },
-    context: formatTrainingContext(trainingContext),
-  }
-
   const memoryUpdate =
-    (await generateMemoryUpdateWithGroq(bundle.profile.preferred_language, memoryPayload).catch(() => null)) ??
+    generatedMemoryUpdate ??
     (await buildMemoryUpdateFromRules(context, simulation, input.userAnswer, isCorrect))
 
   await applyMemoryUpdate(supabase, userId, simulation.category, memoryUpdate)
 
   const recommendation =
-    (await generateRecommendationWithGroq(bundle.profile.preferred_language, {
-      simulation,
-      feedback,
-      memoryUpdate,
-      context: formatTrainingContext(trainingContext),
-    }).catch(() => null)) ??
+    (await runFastAiTask(() =>
+      generateRecommendationWithGroq(bundle.profile.preferred_language, {
+        simulation,
+        feedback,
+        memoryUpdate,
+        context: formattedTrainingContext,
+      }),
+    )) ??
     buildFallbackRecommendation(bundle.profile.preferred_language, simulation, feedback)
 
   await insertRecommendation(supabase, {

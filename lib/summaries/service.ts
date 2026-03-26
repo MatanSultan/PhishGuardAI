@@ -109,6 +109,21 @@ interface PersonalSummaryInput {
   recentAttempts: AttemptWithSimulation[]
 }
 
+const SUMMARY_AI_TIMEOUT_MS = 1200
+
+async function runFastSummaryTask<T>(task: () => Promise<T | null>, timeoutMs = SUMMARY_AI_TIMEOUT_MS) {
+  try {
+    return await Promise.race<T | null>([
+      task(),
+      new Promise<null>((resolve) => {
+        setTimeout(() => resolve(null), timeoutMs)
+      }),
+    ])
+  } catch {
+    return null
+  }
+}
+
 function dedupe(items: string[]) {
   return Array.from(new Set(items.filter(Boolean)))
 }
@@ -531,23 +546,25 @@ export async function generateOrganizationRiskSummary(
     return fallback
   }
 
-  const groqSummary = await generateOrganizationSummaryWithGroq(input.locale, {
-    organization: {
-      name: input.organizationName,
-      type: input.organizationType ?? null,
-      industry: input.industry ?? null,
-      segmentProfile: getOrganizationProfile(input.locale, input.organizationType, input.industry),
-      segmentExperience: getOrganizationExperience(input.locale, input.organizationType),
-    },
-    overview: input.overview,
-    weakestCategories: input.weakestCategories,
-    channelBreakdown: input.channelBreakdown,
-    lowEngagement: input.lowEngagement,
-    employeesNeedingSupport: input.employeesNeedingSupport,
-    attentionFlags: input.attentionFlags,
-    companyRecommendations: input.companyRecommendations,
-    riskScore: input.riskScore,
-  }).catch(() => null)
+  const groqSummary = await runFastSummaryTask(() =>
+    generateOrganizationSummaryWithGroq(input.locale, {
+      organization: {
+        name: input.organizationName,
+        type: input.organizationType ?? null,
+        industry: input.industry ?? null,
+        segmentProfile: getOrganizationProfile(input.locale, input.organizationType, input.industry),
+        segmentExperience: getOrganizationExperience(input.locale, input.organizationType),
+      },
+      overview: input.overview,
+      weakestCategories: input.weakestCategories,
+      channelBreakdown: input.channelBreakdown,
+      lowEngagement: input.lowEngagement,
+      employeesNeedingSupport: input.employeesNeedingSupport,
+      attentionFlags: input.attentionFlags,
+      companyRecommendations: input.companyRecommendations,
+      riskScore: input.riskScore,
+    }),
+  )
 
   return groqSummary ?? fallback
 }
@@ -561,48 +578,50 @@ export async function generatePersonalImprovementSummary(
     return fallback
   }
 
-  const groqSummary = await generatePersonalSummaryWithGroq(input.locale, {
-    learner: {
-      fullName: input.profile.fullName,
-      email: input.profile.email,
-    },
-    organization: input.organizationType
-      ? {
-          name: input.organizationName ?? null,
-          type: input.organizationType,
-          segmentProfile: getOrganizationProfile(
-            input.locale,
-            input.organizationType,
-            null,
-          ),
-          segmentExperience: getOrganizationExperience(
-            input.locale,
-            input.organizationType,
-          ),
-        }
-      : null,
-    stats: input.stats,
-    preferredDomains: input.preferredDomains,
-    topWeaknesses: input.weaknesses.slice(0, 5).map((weakness) => ({
-      key: weakness.weakness_key,
-      label: weakness.weakness_label,
-      category: weakness.category,
-      score: weakness.score,
-    })),
-    recentRecommendations: input.recommendations.slice(0, 4).map((recommendation) => ({
-      text: recommendation.recommendation_text,
-      reason: recommendation.reason,
-      priority: recommendation.priority,
-    })),
-    recentAttempts: input.recentAttempts.slice(0, 6).map((attempt) => ({
-      createdAt: attempt.created_at,
-      isCorrect: attempt.is_correct,
-      channel: attempt.simulation?.channel ?? null,
-      category: attempt.simulation?.category ?? null,
-      isPhishing: attempt.simulation?.is_phishing ?? null,
-      title: attempt.simulation?.title ?? null,
-    })),
-  }).catch(() => null)
+  const groqSummary = await runFastSummaryTask(() =>
+    generatePersonalSummaryWithGroq(input.locale, {
+      learner: {
+        fullName: input.profile.fullName,
+        email: input.profile.email,
+      },
+      organization: input.organizationType
+        ? {
+            name: input.organizationName ?? null,
+            type: input.organizationType,
+            segmentProfile: getOrganizationProfile(
+              input.locale,
+              input.organizationType,
+              null,
+            ),
+            segmentExperience: getOrganizationExperience(
+              input.locale,
+              input.organizationType,
+            ),
+          }
+        : null,
+      stats: input.stats,
+      preferredDomains: input.preferredDomains,
+      topWeaknesses: input.weaknesses.slice(0, 5).map((weakness) => ({
+        key: weakness.weakness_key,
+        label: weakness.weakness_label,
+        category: weakness.category,
+        score: weakness.score,
+      })),
+      recentRecommendations: input.recommendations.slice(0, 4).map((recommendation) => ({
+        text: recommendation.recommendation_text,
+        reason: recommendation.reason,
+        priority: recommendation.priority,
+      })),
+      recentAttempts: input.recentAttempts.slice(0, 6).map((attempt) => ({
+        createdAt: attempt.created_at,
+        isCorrect: attempt.is_correct,
+        channel: attempt.simulation?.channel ?? null,
+        category: attempt.simulation?.category ?? null,
+        isPhishing: attempt.simulation?.is_phishing ?? null,
+        title: attempt.simulation?.title ?? null,
+      })),
+    }),
+  )
 
   return groqSummary ?? fallback
 }
