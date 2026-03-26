@@ -22,6 +22,13 @@ export default function InvitePanel({
   const companyCopy = getCompanyCopy(locale)
   const [state, setState] = useState<'idle' | 'submitting' | 'accepted'>('idle')
   const [error, setError] = useState<string | null>(null)
+  const isMismatch = error?.includes('sent to') && error?.includes('signed in')
+
+  const handleSignOut = async () => {
+    await fetch('/api/auth/signout', { method: 'POST' })
+    router.replace(`/auth/signin?next=${encodeURIComponent(`/invite/${token}`)}`)
+    router.refresh()
+  }
 
   const handleAccept = async () => {
     setState('submitting')
@@ -108,6 +115,25 @@ export default function InvitePanel({
           {error ? (
             <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
               {error}
+              {isMismatch ? (
+                <div className="mt-3 space-y-2 text-xs text-destructive/90">
+                  <p>
+                    {locale === 'he'
+                      ? 'התחבר/י עם המייל שקיבל את ההזמנה או בקש/י מהמנהל לשלוח הזמנה חדשה.'
+                      : 'Sign in with the invited email or ask the admin to send a new invite.'}
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    <Button size="sm" variant="outline" onClick={() => void handleSignOut()}>
+                      {locale === 'he' ? 'התנתקות והתחברות מחדש' : 'Sign out and switch email'}
+                    </Button>
+                    <Link href="/auth/signin" className="inline-flex">
+                      <Button size="sm" variant="ghost">
+                        {locale === 'he' ? 'מסך התחברות' : 'Back to sign in'}
+                      </Button>
+                    </Link>
+                  </div>
+                </div>
+              ) : null}
             </div>
           ) : null}
         </CardContent>

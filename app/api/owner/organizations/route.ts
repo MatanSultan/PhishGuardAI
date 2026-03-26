@@ -29,10 +29,11 @@ export async function GET() {
       access_blocked: boolean
       limit_reached?: boolean
       attempts_7d?: number
+      likely_to_convert?: boolean
       name: string
     }
 
-    const orgs = (enriched ?? []) as OwnerOrgRow[]
+    const orgs = (enriched ?? []) as unknown as OwnerOrgRow[]
 
     const stats = {
       total: orgs.length,

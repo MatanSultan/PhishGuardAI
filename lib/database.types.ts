@@ -175,6 +175,21 @@ export interface Database {
         }
         Relationships: NoRelationships
       }
+      platform_owners: {
+        Row: {
+          created_at: string
+          email: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+        }
+        Relationships: NoRelationships
+      }
       profiles: {
         Row: {
           created_at: string

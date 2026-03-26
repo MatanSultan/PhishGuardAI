@@ -556,6 +556,7 @@ export async function inviteOrganizationMember(
 export async function acceptOrganizationInvite(
   supabase: AppSupabaseClient,
   userId: string,
+  userEmail: string | null,
   token: string,
 ) {
   await getProfileBundle(supabase, userId)
@@ -576,7 +577,7 @@ export async function acceptOrganizationInvite(
 
   const { data: inviteLookup, error: inviteLookupError } = await supabase
     .from('team_invites')
-    .select('status, expires_at')
+    .select('status, expires_at, email')
     .eq('token', token)
     .maybeSingle()
 
@@ -594,6 +595,17 @@ export async function acceptOrganizationInvite(
 
     if (inviteLookup.status === 'expired' || expiredByTime) {
       throw new OrganizationServiceError('This invite has expired.', 410)
+    }
+
+    if (inviteLookup.email && userEmail) {
+      const invited = inviteLookup.email.trim().toLowerCase()
+      const current = userEmail.trim().toLowerCase()
+      if (invited !== current) {
+        throw new OrganizationServiceError(
+          `This invite was sent to ${inviteLookup.email}. You are signed in as ${userEmail}. Sign in with the invited email or ask the admin to send a new invite.\nההזמנה נשלחה ל-${inviteLookup.email}. אתה/את מחובר/ת כ-${userEmail}. התחבר/י עם המייל שהוזמן או בקש/י מהמנהל לשלוח הזמנה חדשה.`,
+          403,
+        )
+      }
     }
   }
 

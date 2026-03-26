@@ -50,6 +50,7 @@ interface SimulationFallbackOptions {
   channel: Channel
   category: SimulationCategory
   difficulty: Difficulty
+  organizationType?: OrganizationType | null
 }
 
 type GeneratedSimulationSource = 'groq' | 'fallback'

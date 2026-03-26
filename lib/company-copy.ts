@@ -435,6 +435,10 @@ export function mapInviteAcceptanceError(message: string | null | undefined, loc
   const copy = getCompanyCopy(locale).invite
   const normalized = message?.toLowerCase() ?? ''
 
+  if (message && message.includes('sent to') && message.includes('signed in')) {
+    return message
+  }
+
   if (normalized.includes('different email address')) {
     return copy.wrongEmail
   }

@@ -16,7 +16,7 @@ export async function POST(request: Request) {
     }
 
     const body = acceptInviteSchema.parse(await request.json())
-    const context = await acceptOrganizationInvite(supabase, user.id, body.token)
+    const context = await acceptOrganizationInvite(supabase, user.id, user.email ?? null, body.token)
 
     return NextResponse.json({
       organization: context.organization,
