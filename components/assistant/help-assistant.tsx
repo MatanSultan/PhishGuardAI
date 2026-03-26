@@ -39,12 +39,12 @@ export function HelpAssistant({ role, mode }: HelpAssistantProps) {
   const defaultStarter = useMemo(() => {
     if (role === 'admin') {
       return locale === 'he'
-        ? ['את מי צריך לרענן?', 'מה אומר Risk Score?', 'מה לעשות עכשיו?']
+        ? ['את מי לרענן?', 'מה אומר Risk Score?', 'מה לעשות עכשיו?']
         : ['Who needs a refresher?', 'What does the Risk Score mean?', 'What should I do next?']
     }
 
     return locale === 'he'
-      ? ['איך מתחילים אימון?', 'מה המשמעות של הציון שלי?', 'איך אני משתפר?']
+      ? ['איך מתחילים אימון?', 'מה הציון שלי אומר?', 'איך להשתפר?']
       : ['How do I start training?', 'What does my score mean?', 'How do I improve?']
   }, [locale, role])
 
@@ -55,8 +55,8 @@ export function HelpAssistant({ role, mode }: HelpAssistantProps) {
           from: 'assistant',
           text:
             locale === 'he'
-              ? 'שלום! אפשר לשאול על הדף הזה, על כפתור מסוים או על הציון שאתם רואים.'
-              : 'Hi! Ask about this page, a specific button, or the score you are seeing.',
+              ? 'שלום! שאל/י על הדף, הציון או פעולה הבאה ואכוון אותך במהירות.'
+              : 'Hi! Ask about this page, your score, or the next action and I’ll guide you quickly.',
         },
       ])
       setSuggestions(defaultStarter)
@@ -90,7 +90,7 @@ export function HelpAssistant({ role, mode }: HelpAssistantProps) {
       const reply =
         data.reply ||
         (locale === 'he'
-          ? 'לא הצלחתי לענות כרגע. נסה שוב בעוד רגע.'
+          ? 'לא הצלחתי לענות כרגע. נסו שוב בעוד רגע.'
           : 'Unable to answer right now. Please try again.')
 
       setMessages((prev) => [...prev, { from: 'assistant', text: reply }])
@@ -104,8 +104,8 @@ export function HelpAssistant({ role, mode }: HelpAssistantProps) {
           from: 'assistant',
           text:
             locale === 'he'
-              ? 'אני כאן כדי לעזור בתוך PhishGuard AI. שאל על הדף, הציון או הפעולה הבאה ואכוון אותך מיד.'
-              : 'I’m here to help inside PhishGuard AI. Ask about this page, your score, or the next action and I’ll guide you.',
+              ? 'אני כאן כדי לכוון אותך מהר. שאל על הדף, הציון או הפעולה הבאה ואכוון אותך מיד.'
+              : 'I’m here to guide you quickly. Ask about this page, your score, or the next action and I’ll point you there.',
         },
       ])
     } finally {
@@ -153,12 +153,18 @@ export function HelpAssistant({ role, mode }: HelpAssistantProps) {
                 {messages.length === 0 && (
                   <div className="text-sm text-muted-foreground">
                     {locale === 'he'
-                      ? 'שאל/י על הדף הנוכחי, הציון, הדוח או כפתור לא ברור.'
-                      : 'Ask about the current page, score, report, or an unclear button.'}
+                      ? 'שאל/י על הדף, הציון או פעולה הבאה ואכוון צעד-אחר-צעד.'
+                      : 'Ask about this page, your score, or the next action and I’ll guide you step by step.'}
                   </div>
                 )}
               </div>
             </ScrollArea>
+
+            {isSending && (
+              <div className="text-xs text-muted-foreground">
+                {locale === 'he' ? 'מחכה לתשובת העוזר…' : 'Waiting for assistant response…'}
+              </div>
+            )}
 
             <div className="flex flex-wrap gap-2">
               {suggestions.map((prompt) => (

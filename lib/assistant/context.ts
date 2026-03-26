@@ -28,8 +28,8 @@ export const PAGE_HELP_REGISTRY: Record<string, PageHelpContext> = {
     allowedTopics: ['cards', 'scores', 'next steps', 'navigation', 'training start'],
     actions: ['View personal summary', 'Start or continue training', 'Open detailed reports'],
     starterPrompts: {
-      admin: ['את מי צריך לרענן?', 'מה אומר Risk Score?', 'מה לעשות עכשיו?'],
-      employee: ['איך מתחילים אימון?', 'מה המשמעות של הציון שלי?', 'איך אני משתפר?'],
+      admin: ['את מי לרענן?', 'מה אומר Risk Score?', 'מה לעשות עכשיו?'],
+      employee: ['איך מתחילים אימון?', 'מה הציון שלי אומר?', 'איך להשתפר?'],
     },
     notes: riskScoreNotes,
   },
@@ -39,8 +39,8 @@ export const PAGE_HELP_REGISTRY: Record<string, PageHelpContext> = {
     allowedTopics: ['how to answer', 'what happens after responding', 'training tips'],
     actions: ['Open the next simulation', 'Mark as safe or phishing', 'Read feedback'],
     starterPrompts: {
-      admin: ['איך עובד האימון לעובדים?', 'מה קורה אחרי סימולציה?', 'איך להסביר לעובדים מה לעשות?'],
-      employee: ['איך עונים לשאלה?', 'מה יקרה אחרי שאבחר?', 'איך אני משתפר?'],
+      admin: ['איך עובד האימון?', 'מה קורה אחרי סימולציה?', 'איך להסביר לעובדים מה לעשות?'],
+      employee: ['איך עונים לשאלה?', 'מה קורה אחרי סימולציה?', 'איך להשתפר?'],
     },
   },
   memory: {
