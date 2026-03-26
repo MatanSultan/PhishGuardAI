@@ -7,6 +7,7 @@ const envSchema = z.object({
   GROQ_API_KEY: z.string().min(1).optional(),
   APP_URL: z.string().url().optional(),
   NEXT_PUBLIC_APP_URL: z.string().url().optional(),
+  OWNER_EMAILS: z.string().optional(),
 })
 
 export const env = envSchema.parse({
@@ -16,6 +17,7 @@ export const env = envSchema.parse({
   GROQ_API_KEY: process.env.GROQ_API_KEY,
   APP_URL: process.env.APP_URL,
   NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
+  OWNER_EMAILS: process.env.OWNER_EMAILS,
 })
 
 export function getAppUrl() {

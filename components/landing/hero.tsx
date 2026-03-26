@@ -2,6 +2,10 @@
 
 import Link from 'next/link'
 import { ArrowRight, Play, Shield, Mail, MessageSquare, Smartphone } from 'lucide-react'
+import {
+  SALES_WHATSAPP_DEMO_MESSAGE,
+  buildSalesWhatsAppUrl,
+} from '@/lib/constants'
 import { useLocale } from '@/lib/locale-context'
 import { Button } from '@/components/ui/button'
 
@@ -13,9 +17,9 @@ export function Hero() {
           badge: 'הפחתת סיכון אנושי לארגונים בישראל',
           title: 'תוך דקות תראו איפה הארגון שלכם חשוף לפישינג',
           subtitle:
-            'PhishGuard AI מדמה הודעות מתחזות אמיתיות, מאמן עובדים, ומראה למנהלים מי צריך רענון ואיפה נכון להתחיל - בלי צוות סייבר.',
+            'PhishGuard AI מדמה הודעות שנראות אמיתיות, מאמן עובדים, ומראה למנהלים איפה הסיכון, מי צריך רענון ומה נכון לעשות עכשיו.',
           ctaPrimary: 'לתיאום דמו',
-          ctaSecondary: 'למסלולים ומחירים',
+          ctaSecondary: 'התחלת תקופת ניסיון',
           trustedBy: 'מותאם לבתי ספר, רשויות מקומיות, עמותות, בתי אבות ועסקים קטנים',
           trustedMarks: ['חינוך', 'רשויות', 'עמותות', 'בתי אבות', 'SMB'],
           dashboardTitle: 'לוח מנהלים של PhishGuard AI',
@@ -34,9 +38,9 @@ export function Hero() {
           badge: 'Practical human-risk reduction for Israeli teams',
           title: 'See where your organization is exposed to phishing in minutes',
           subtitle:
-            'PhishGuard AI simulates realistic phishing messages, trains employees, and shows managers who needs a refresher and where to start, without a security team.',
+            'PhishGuard AI simulates realistic phishing messages, trains employees, and shows managers where the risk is, who needs a refresher, and what to do next.',
           ctaPrimary: 'Book a demo',
-          ctaSecondary: 'See pricing',
+          ctaSecondary: 'Start a trial',
           trustedBy: 'Built for schools, municipalities, nonprofits, care homes, and SMBs',
           trustedMarks: ['Education', 'Municipal', 'Nonprofits', 'Care', 'SMBs'],
           dashboardTitle: 'PhishGuard AI Manager Dashboard',
@@ -76,13 +80,17 @@ export function Hero() {
           </p>
 
           <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
-            <Link href="/auth/signup">
+            <a
+              href={buildSalesWhatsAppUrl(SALES_WHATSAPP_DEMO_MESSAGE)}
+              target="_blank"
+              rel="noreferrer"
+            >
               <Button size="lg" className="group h-12 px-8 text-base">
                 {copy.ctaPrimary}
                 <ArrowRight className="ltr:ml-2 rtl:mr-2 h-4 w-4 transition-transform group-hover:ltr:translate-x-1 group-hover:rtl:-translate-x-1" />
               </Button>
-            </Link>
-            <Link href="/#pricing">
+            </a>
+            <Link href="/auth/signup">
               <Button variant="outline" size="lg" className="h-12 px-8 text-base">
                 <Play className="ltr:mr-2 rtl:ml-2 h-4 w-4" />
                 {copy.ctaSecondary}

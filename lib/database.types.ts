@@ -129,31 +129,49 @@ export interface Database {
       }
       organizations: {
         Row: {
+          access_blocked: boolean
+          billing_notes: string | null
           created_at: string
           created_by: string | null
           id: string
           industry: string | null
+          max_members_allowed: number
           name: string
           organization_type: OrganizationType
+          plan_status: string
+          plan_type: string
           slug: string
+          trial_ends_at: string | null
         }
         Insert: {
+          access_blocked?: boolean
+          billing_notes?: string | null
           created_at?: string
           created_by?: string | null
           id?: string
           industry?: string | null
+          max_members_allowed?: number
           name: string
           organization_type?: OrganizationType
+          plan_status?: string
+          plan_type?: string
           slug: string
+          trial_ends_at?: string | null
         }
         Update: {
+          access_blocked?: boolean
+          billing_notes?: string | null
           created_at?: string
           created_by?: string | null
           id?: string
           industry?: string | null
+          max_members_allowed?: number
           name?: string
           organization_type?: OrganizationType
+          plan_status?: string
+          plan_type?: string
           slug?: string
+          trial_ends_at?: string | null
         }
         Relationships: NoRelationships
       }

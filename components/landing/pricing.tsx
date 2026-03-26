@@ -2,6 +2,11 @@
 
 import { Check } from 'lucide-react'
 import Link from 'next/link'
+import {
+  SALES_WHATSAPP_DEMO_MESSAGE,
+  SALES_WHATSAPP_UPGRADE_MESSAGE,
+  buildSalesWhatsAppUrl,
+} from '@/lib/constants'
 import { useLocale } from '@/lib/locale-context'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
@@ -11,8 +16,8 @@ export function Pricing() {
   const copy =
     locale === 'he'
       ? {
-          title: 'מחיר ברור, ערך ברור',
-          subtitle: 'בוחרים את רמת הליווי שמתאימה לארגון ומתחילים מהר - מפיילוט קצר ועד פריסה רחבה יותר.',
+          title: 'מסלולים פשוטים, בלי משחקים',
+          subtitle: 'מתחילים בפיילוט קצר או מתקדמים למסלול ארגוני מלא. אם צריך, מדברים איתנו ומחליטים יחד.',
           popularBadge: 'המסלול המומלץ',
           plans: [
             {
@@ -26,7 +31,9 @@ export function Pricing() {
                 'תרחישים מותאמים למגזר ועלייה מהירה לפיילוט',
                 'תמיכה במייל והקמה מהירה',
               ],
-              cta: 'התחלת פיילוט',
+              cta: 'התחלת תקופת ניסיון',
+              href: '/auth/signup',
+              external: false,
               popular: false,
             },
             {
@@ -41,6 +48,8 @@ export function Pricing() {
                 'תמיכה מועדפת וליווי לעלייה לאוויר',
               ],
               cta: 'לתיאום דמו',
+              href: buildSalesWhatsAppUrl(SALES_WHATSAPP_DEMO_MESSAGE),
+              external: true,
               popular: true,
             },
             {
@@ -53,14 +62,16 @@ export function Pricing() {
                 'מפגשי מנהלים והדרכות קצרות לעובדים',
                 'ליווי שוטף לדמו, הטמעה וביקורת רבעונית',
               ],
-              cta: 'לדבר איתנו',
+              cta: 'שיחה ב-WhatsApp',
+              href: buildSalesWhatsAppUrl(SALES_WHATSAPP_UPGRADE_MESSAGE),
+              external: true,
               popular: false,
             },
           ],
         }
       : {
-          title: 'Clear pricing, clear value',
-          subtitle: 'Choose the level of rollout and support you need, from a fast pilot to a broader rollout.',
+          title: 'Simple plans, clear next step',
+          subtitle: 'Start with a short pilot or move into a full organization rollout. If needed, talk with us and decide together.',
           popularBadge: 'Most popular',
           plans: [
             {
@@ -74,7 +85,9 @@ export function Pricing() {
                 'Segment-aware scenarios for a fast pilot launch',
                 'Email support and quick setup',
               ],
-              cta: 'Start a pilot',
+              cta: 'Start a trial',
+              href: '/auth/signup',
+              external: false,
               popular: false,
             },
             {
@@ -89,6 +102,8 @@ export function Pricing() {
                 'Priority support and rollout guidance',
               ],
               cta: 'Book a demo',
+              href: buildSalesWhatsAppUrl(SALES_WHATSAPP_DEMO_MESSAGE),
+              external: true,
               popular: true,
             },
             {
@@ -101,7 +116,9 @@ export function Pricing() {
                 'Manager workshops and short employee sessions',
                 'Ongoing support for demos, rollout, and quarterly reviews',
               ],
-              cta: 'Talk to us',
+              cta: 'WhatsApp us',
+              href: buildSalesWhatsAppUrl(SALES_WHATSAPP_UPGRADE_MESSAGE),
+              external: true,
               popular: false,
             },
           ],
@@ -115,6 +132,14 @@ export function Pricing() {
             {copy.title}
           </h2>
           <p className="mt-4 text-pretty text-lg text-muted-foreground">{copy.subtitle}</p>
+          <a
+            href={buildSalesWhatsAppUrl(SALES_WHATSAPP_DEMO_MESSAGE)}
+            target="_blank"
+            rel="noreferrer"
+            className="mt-4 inline-flex text-sm font-medium text-primary hover:underline"
+          >
+            {locale === 'he' ? 'רוצים לדבר עכשיו? תיאום דמו ב-WhatsApp' : 'Want to talk now? Book a demo on WhatsApp'}
+          </a>
         </div>
 
         <div className="mt-16 grid gap-8 lg:grid-cols-3">
@@ -157,18 +182,33 @@ export function Pricing() {
                   ))}
                 </ul>
 
-                <Link href="/auth/signup" className="block">
-                  <Button
-                    className={cn(
-                      'w-full',
-                      isPopular
-                        ? 'bg-primary hover:bg-primary/90'
-                        : 'bg-secondary text-secondary-foreground hover:bg-secondary/80',
-                    )}
-                  >
-                    {plan.cta}
-                  </Button>
-                </Link>
+                {plan.external ? (
+                  <a href={plan.href} target="_blank" rel="noreferrer" className="block">
+                    <Button
+                      className={cn(
+                        'w-full',
+                        isPopular
+                          ? 'bg-primary hover:bg-primary/90'
+                          : 'bg-secondary text-secondary-foreground hover:bg-secondary/80',
+                      )}
+                    >
+                      {plan.cta}
+                    </Button>
+                  </a>
+                ) : (
+                  <Link href={plan.href} className="block">
+                    <Button
+                      className={cn(
+                        'w-full',
+                        isPopular
+                          ? 'bg-primary hover:bg-primary/90'
+                          : 'bg-secondary text-secondary-foreground hover:bg-secondary/80',
+                      )}
+                    >
+                      {plan.cta}
+                    </Button>
+                  </Link>
+                )}
               </div>
             )
           })}

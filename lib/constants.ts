@@ -44,6 +44,26 @@ export const ORGANIZATION_TYPES = [
 export type OrganizationType = (typeof ORGANIZATION_TYPES)[number]
 export const DEFAULT_ORGANIZATION_TYPE: OrganizationType = 'other'
 
+export const PLAN_TYPES = ['free', 'growth', 'scale'] as const
+export type PlanType = (typeof PLAN_TYPES)[number]
+export const PLAN_STATUSES = ['free', 'trial', 'active_paid', 'past_due', 'blocked'] as const
+export type PlanStatus = (typeof PLAN_STATUSES)[number]
+export const DEFAULT_PLAN_TYPE: PlanType = 'free'
+export const DEFAULT_PLAN_STATUS: PlanStatus = 'free'
+export const DEFAULT_FREE_MAX_MEMBERS = 1
+export const SALES_CONTACT_EMAIL = 'sales@phishguard.ai'
+export const SALES_WHATSAPP_URL = 'https://wa.me/972502555383'
+export const SALES_WHATSAPP_UPGRADE_MESSAGE =
+  'שלום, אני רוצה לשדרג את הארגון שלי ב-PhishGuard AI'
+export const SALES_WHATSAPP_DEMO_MESSAGE =
+  'שלום, אני רוצה לתאם דמו ל-PhishGuard AI'
+export const SALES_WHATSAPP_TRIAL_MESSAGE =
+  'שלום, אני רוצה להתחיל תקופת ניסיון ב-PhishGuard AI'
+
+export function buildSalesWhatsAppUrl(message: string) {
+  return `${SALES_WHATSAPP_URL}?text=${encodeURIComponent(message)}`
+}
+
 export const ORGANIZATION_ROLES = ['member', 'admin'] as const
 export type OrganizationRole = (typeof ORGANIZATION_ROLES)[number]
 
@@ -78,6 +98,8 @@ export const APP_ROUTES = {
   admin: '/admin',
   adminReports: '/admin/reports',
   invite: '/invite',
+  upgrade: '/upgrade',
+  owner: '/owner',
   signIn: '/auth/signin',
   signUp: '/auth/signup',
   forgotPassword: '/auth/forgot-password',
@@ -93,6 +115,8 @@ export const protectedRoutePrefixes = [
   APP_ROUTES.leaderboard,
   APP_ROUTES.settings,
   APP_ROUTES.admin,
+  APP_ROUTES.owner,
+  APP_ROUTES.upgrade,
 ] as const
 
 export const authRoutePrefixes = [

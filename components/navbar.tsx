@@ -33,6 +33,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import type { OrganizationRole } from '@/lib/constants'
+import { SALES_WHATSAPP_DEMO_MESSAGE, buildSalesWhatsAppUrl } from '@/lib/constants'
 import { useLocale } from '@/lib/locale-context'
 import { cn } from '@/lib/utils'
 
@@ -223,11 +224,16 @@ export function Navbar({ variant = 'landing', organizationState = null }: Navbar
                   {landingLabels.signIn}
                 </Button>
               </Link>
-              <Link href="/auth/signup" className="hidden md:block">
+              <a
+                href={buildSalesWhatsAppUrl(SALES_WHATSAPP_DEMO_MESSAGE)}
+                target="_blank"
+                rel="noreferrer"
+                className="hidden md:block"
+              >
                 <Button size="sm" className="bg-primary hover:bg-primary/90">
                   {landingLabels.cta}
                 </Button>
-              </Link>
+              </a>
             </>
           ) : (
             <DropdownMenu>
@@ -301,11 +307,16 @@ export function Navbar({ variant = 'landing', organizationState = null }: Navbar
                     {landingLabels.signIn}
                   </Button>
                 </Link>
-                <Link href="/auth/signup" onClick={() => setMobileMenuOpen(false)}>
+                <a
+                  href={buildSalesWhatsAppUrl(SALES_WHATSAPP_DEMO_MESSAGE)}
+                  target="_blank"
+                  rel="noreferrer"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
                   <Button className="w-full bg-primary hover:bg-primary/90">
                     {landingLabels.cta}
                   </Button>
-                </Link>
+                </a>
               </div>
             )}
           </div>

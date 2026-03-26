@@ -43,6 +43,11 @@ import {
   formatOrganizationRoleLabel,
   getCompanyCopy,
 } from '@/lib/company-copy'
+import {
+  SALES_WHATSAPP_DEMO_MESSAGE,
+  SALES_WHATSAPP_UPGRADE_MESSAGE,
+  buildSalesWhatsAppUrl,
+} from '@/lib/constants'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import {
@@ -249,6 +254,8 @@ export default function AdminPage() {
     kind: 'success' | 'error'
     message: string
   } | null>(null)
+  const [showPaywall, setShowPaywall] = useState(false)
+  const [paywallMessage, setPaywallMessage] = useState<string | null>(null)
   const [memberFeedback, setMemberFeedback] = useState<{
     kind: 'success' | 'error'
     message: string
@@ -348,6 +355,16 @@ export default function AdminPage() {
 
       const payload = await response.json().catch(() => null)
       setInviteState('idle')
+
+      if (response.status === 402 || response.status === 403) {
+        setPaywallMessage(payload?.error ?? null)
+        setShowPaywall(true)
+        setInviteFeedback({
+          kind: 'error',
+          message: paywallHeadline,
+        })
+        return
+      }
 
       if (!response.ok) {
         setInviteFeedback({
@@ -632,6 +649,7 @@ export default function AdminPage() {
   const adminCount = members.filter(
     (member) => member.membership.role === 'admin' && member.membership.status === 'active',
   ).length
+  const activeMemberCount = members.filter((member) => member.membership.status === 'active').length
   const organizationProfile = getOrganizationSegmentProfile(
     data.organization.organization_type,
     data.organization.industry,
@@ -712,9 +730,71 @@ export default function AdminPage() {
   const nextActionDescription = topRecommendation
     ? `${topRecommendation.reason} ${getPrimaryIssueCopy(locale, data.overview, data.lowEngagement.length)}`
     : getPrimaryIssueCopy(locale, data.overview, data.lowEngagement.length)
+  const planStatus = data.organization.plan_status ?? 'free'
+  const planType = data.organization.plan_type ?? 'free'
+  const maxMembersAllowed = data.organization.max_members_allowed ?? 1
+  const planBlocked = Boolean((data.organization as { access_blocked?: boolean }).access_blocked)
+  const planPastDue = planStatus === 'past_due'
+  const inviteLimitReached =
+    maxMembersAllowed > 0 ? activeMemberCount >= maxMembersAllowed : false
+  const isFreePlan = planStatus === 'free' || planType === 'free'
+  const inviteDisabled = planBlocked || planPastDue || inviteLimitReached
+  const upgradeLinks = {
+    upgrade: buildSalesWhatsAppUrl(SALES_WHATSAPP_UPGRADE_MESSAGE),
+    demo: buildSalesWhatsAppUrl(SALES_WHATSAPP_DEMO_MESSAGE),
+  }
+  const upgradeCopy =
+    locale === 'he'
+      ? {
+          title: 'שדרוג הארגון',
+          trial: 'התחלת תקופת ניסיון',
+          demo: 'תיאום דמו',
+          whatsapp: 'שיחה ב-WhatsApp',
+          unlocks: 'אחרי השדרוג תוכלו להזמין עובדים, לפתוח שימוש צוותי מלא ולקבל דוחות מנהלים.',
+          nextStep: 'השלב הבא: בוחרים אם להתחיל ניסיון, לתאם דמו או לשלוח הודעה.',
+          freeHeadline: 'הארגון כרגע במסלול היכרות',
+          freeBody: 'אפשר להמשיך לבד. כדי להזמין עובדים נוספים צריך לשדרג.',
+          limitHeadline: 'כדי להזמין עובדים נוספים צריך לשדרג',
+          limitBody: 'במסלול ההיכרות יש משתמש פעיל אחד. שדרוג פותח שימוש צוותי מלא.',
+          blockedHeadline: 'החשבון חסום כרגע לשימוש צוותי',
+          blockedBody: 'אחרי פתיחה מחדש תוכלו להוסיף עובדים ולהמשיך מאותה נקודה.',
+          pastDueHeadline: 'ההזמנות נעצרו עד להסדרת החשבון',
+          pastDueBody: 'ברגע שמסדירים את החשבון אפשר לחזור להזמין עובדים כרגיל.',
+        }
+      : {
+          title: 'Upgrade organization',
+          trial: 'Start a trial',
+          demo: 'Book a demo',
+          whatsapp: 'WhatsApp',
+          unlocks: 'After the upgrade you can invite employees, unlock full team use, and get full manager reporting.',
+          nextStep: 'Next step: start a trial, book a demo, or send us a message.',
+          freeHeadline: 'Your organization is on the free exploration plan',
+          freeBody: 'You can keep exploring alone. To invite more employees, you need to upgrade.',
+          limitHeadline: 'Upgrade to invite more employees',
+          limitBody: 'The free exploration plan includes one active member. Upgrade to unlock full team use.',
+          blockedHeadline: 'This account is currently blocked for team use',
+          blockedBody: 'Once access is restored, you can add employees and continue from the same point.',
+          pastDueHeadline: 'Invites are paused until billing is settled',
+          pastDueBody: 'Once billing is settled, you can invite employees again as usual.',
+        }
+  const paywallHeadline = planBlocked
+    ? upgradeCopy.blockedHeadline
+    : planPastDue
+      ? upgradeCopy.pastDueHeadline
+      : inviteLimitReached
+        ? upgradeCopy.limitHeadline
+        : upgradeCopy.freeHeadline
+  const paywallBody = planBlocked
+    ? upgradeCopy.blockedBody
+    : planPastDue
+      ? upgradeCopy.pastDueBody
+      : inviteLimitReached
+        ? upgradeCopy.limitBody
+        : upgradeCopy.freeBody
 
   return (
-    <div className="container mx-auto space-y-6 px-4 py-8 lg:px-8" dir={dir}>
+    <>
+      <div className="container mx-auto space-y-6 px-4 py-8 lg:px-8" dir={dir}>
       <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <div className="mb-2 flex items-center gap-2 text-sm text-muted-foreground">
@@ -1036,6 +1116,34 @@ export default function AdminPage() {
             <CardDescription>{companyCopy.admin.inviteDescription}</CardDescription>
           </CardHeader>
           <CardContent>
+            {(inviteDisabled || isFreePlan) && (
+              <div className="mb-4 rounded-lg border border-border bg-muted/40 p-3 text-sm">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="min-w-0 space-y-1">
+                    <p className="font-semibold">{paywallHeadline}</p>
+                    <p className="text-muted-foreground">{paywallBody}</p>
+                    <p className="text-muted-foreground">{upgradeCopy.unlocks}</p>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <a
+                      href={upgradeLinks.upgrade}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      <Button size="sm">{upgradeCopy.whatsapp}</Button>
+                    </a>
+                    <a href={upgradeLinks.demo} target="_blank" rel="noreferrer">
+                      <Button variant="outline" size="sm">
+                        {upgradeCopy.demo}
+                      </Button>
+                    </a>
+                    <Link href="/upgrade">
+                      <Button variant="outline" size="sm">{upgradeCopy.trial}</Button>
+                    </Link>
+                  </div>
+                </div>
+              </div>
+            )}
             <form onSubmit={handleInvite} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="invite-email">{companyCopy.admin.employeeEmail}</Label>
@@ -1045,6 +1153,7 @@ export default function AdminPage() {
                   value={inviteEmail}
                   onChange={(event) => setInviteEmail(event.target.value)}
                   placeholder="employee@company.com"
+                  disabled={inviteDisabled}
                   required
                 />
               </div>
@@ -1054,6 +1163,7 @@ export default function AdminPage() {
                   <Button
                     type="button"
                     variant={inviteRole === 'member' ? 'default' : 'outline'}
+                    disabled={inviteDisabled}
                     onClick={() => setInviteRole('member')}
                   >
                     {formatOrganizationRoleLabel('member', locale)}
@@ -1061,13 +1171,18 @@ export default function AdminPage() {
                   <Button
                     type="button"
                     variant={inviteRole === 'admin' ? 'default' : 'outline'}
+                    disabled={inviteDisabled}
                     onClick={() => setInviteRole('admin')}
                   >
                     {formatOrganizationRoleLabel('admin', locale)}
                   </Button>
                 </div>
               </div>
-              <Button type="submit" disabled={inviteState === 'submitting'} className="w-full">
+              <Button
+                type="submit"
+                disabled={inviteState === 'submitting' || inviteDisabled}
+                className="w-full"
+              >
                 {inviteState === 'submitting' ? companyCopy.admin.creatingInvite : companyCopy.admin.createInvite}
               </Button>
             </form>
@@ -1526,6 +1641,37 @@ export default function AdminPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+      </div>
+      <AlertDialog open={showPaywall} onOpenChange={setShowPaywall}>
+        <AlertDialogContent dir={dir}>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{paywallHeadline}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {paywallMessage ?? paywallBody}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="rounded-lg border border-border bg-muted/40 p-3 text-sm text-muted-foreground">
+            <p>{upgradeCopy.unlocks}</p>
+            <p className="mt-2">{upgradeCopy.nextStep}</p>
+          </div>
+          <AlertDialogFooter className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+            <a
+              href={upgradeLinks.upgrade}
+              target="_blank"
+              rel="noreferrer"
+            >
+              <Button>{upgradeCopy.whatsapp}</Button>
+            </a>
+            <a href={upgradeLinks.demo} target="_blank" rel="noreferrer">
+              <Button variant="outline">{upgradeCopy.demo}</Button>
+            </a>
+            <Link href="/upgrade">
+              <Button variant="outline">{upgradeCopy.trial}</Button>
+            </Link>
+            <AlertDialogCancel>{companyCopy.common.cancel}</AlertDialogCancel>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   )
 }

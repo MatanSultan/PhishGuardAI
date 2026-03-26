@@ -98,6 +98,14 @@ const companyCopy = {
       copiedLink: 'Invite link copied.',
       inviteCreated: 'Invite created successfully.',
       copyFailed: 'We could not copy the invite link.',
+      freePlanLabel: 'Free plan preview',
+      freePlanDescription: 'You can explore alone. Upgrade to invite more teammates.',
+      upgradeCta: 'Upgrade for team use',
+      upgradeTrial: 'Start a trial',
+      upgradeContact: 'Contact sales',
+      upgradeWhatsApp: 'WhatsApp sales',
+      upgradeLimitMessage: 'Invite blocked: the free plan includes one active member only.',
+      upgradeBlockedMessage: 'This organization is blocked. Contact us to re-enable access.',
       inviteStatus: 'Invite status',
       inviteCanceled: 'Invite canceled successfully.',
       inviteCancelError: 'We could not cancel the invite.',
@@ -187,6 +195,7 @@ const companyCopy = {
       canceled: 'This invite was canceled. Ask your admin for a new invite link.',
       alreadyUsed: 'This invite has already been used. Ask your admin for a fresh invite link.',
       alreadyMember: 'Your account already belongs to an organization.',
+      upgradeRequired: 'This organization needs to upgrade before adding more people.',
     },
     settings: {
       loadError: 'We could not load your settings right now.',
@@ -289,6 +298,14 @@ const companyCopy = {
       copiedLink: 'קישור ההזמנה הועתק.',
       inviteCreated: 'ההזמנה נוצרה בהצלחה.',
       copyFailed: 'לא הצלחנו להעתיק את קישור ההזמנה.',
+      freePlanLabel: 'מסלול היכרות',
+      freePlanDescription: 'אפשר לבדוק את המערכת לבד. כדי להזמין עובדים צריך לשדרג.',
+      upgradeCta: 'שדרגו לשימוש צוות',
+      upgradeTrial: 'התחלת ניסיון',
+      upgradeContact: 'דברו איתנו',
+      upgradeWhatsApp: 'וואטסאפ למכירות',
+      upgradeLimitMessage: 'ההזמנה נחסמה: במסלול החינמי יש רק משתמש אחד פעיל.',
+      upgradeBlockedMessage: 'הגישה לארגון חסומה. דברו איתנו לפתיחה.',
       inviteStatus: 'סטטוס הזמנה',
       inviteCanceled: 'ההזמנה בוטלה בהצלחה.',
       inviteCancelError: 'לא הצלחנו לבטל את ההזמנה.',
@@ -375,6 +392,7 @@ const companyCopy = {
       canceled: 'ההזמנה בוטלה על ידי הארגון. בקשו מהמנהל קישור חדש.',
       alreadyUsed: 'הקישור הזה כבר נוצל. בקשו מהמנהל קישור חדש.',
       alreadyMember: 'החשבון שלכם כבר שייך לארגון.',
+      upgradeRequired: 'צריך לשדרג את הארגון לפני שמצרפים עוד אנשים.',
     },
     settings: {
       loadError: 'לא הצלחנו לטעון את ההגדרות כרגע.',
@@ -439,6 +457,14 @@ export function mapInviteAcceptanceError(message: string | null | undefined, loc
 
   if (normalized.includes('already belong')) {
     return copy.alreadyMember
+  }
+
+  if (normalized.includes('limit') || normalized.includes('blocked') || normalized.includes('past due')) {
+    return copy.upgradeRequired
+  }
+
+  if (normalized.includes('upgrade')) {
+    return copy.upgradeRequired
   }
 
   return copy.genericError

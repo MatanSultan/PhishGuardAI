@@ -4,9 +4,14 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 
 import {
   APP_ROUTES,
+  DEFAULT_FREE_MAX_MEMBERS,
+  DEFAULT_PLAN_STATUS,
+  DEFAULT_PLAN_TYPE,
   type OrganizationMemberStatus,
   type OrganizationRole,
   type OrganizationType,
+  type PlanStatus,
+  type PlanType,
 } from '@/lib/constants'
 import type { Database, TableInsert, TableRow } from '@/lib/database.types'
 import { getAppUrl } from '@/lib/env'
@@ -22,6 +27,10 @@ export class OrganizationServiceError extends Error {
     super(message)
     this.name = 'OrganizationServiceError'
     this.statusCode = statusCode
+  }
+
+  static upgradeRequired(message: string) {
+    return new OrganizationServiceError(message, 402)
   }
 }
 
@@ -76,6 +85,22 @@ function mapOrganizationError(error: unknown) {
 
   if (message.includes('User already belongs to an organization')) {
     return new OrganizationServiceError('You already belong to an organization.', 409)
+  }
+
+  if (message.includes('Organization member limit reached')) {
+    return OrganizationServiceError.upgradeRequired(
+      'Your current plan limit was reached. Upgrade to add more team members.',
+    )
+  }
+
+  if (message.includes('Organization access is blocked')) {
+    return new OrganizationServiceError('Organization access is blocked. Contact support.', 403)
+  }
+
+  if (message.includes('Organization is past due')) {
+    return OrganizationServiceError.upgradeRequired(
+      'Billing is past due. Contact support to continue.',
+    )
   }
 
   if (message.includes('Organization name is required')) {
@@ -186,6 +211,69 @@ function mapOrganizationError(error: unknown) {
   }
 
   return error
+}
+
+interface OrganizationPlanState {
+  planType: PlanType
+  planStatus: PlanStatus
+  maxMembersAllowed: number
+  accessBlocked: boolean
+  activeMemberCount: number
+}
+
+async function getOrganizationPlanState(
+  supabase: AppSupabaseClient,
+  organizationId: string,
+): Promise<OrganizationPlanState> {
+  const [organizationResult, memberCountResult] = await Promise.all([
+    supabase
+      .from('organizations')
+      .select('plan_type, plan_status, max_members_allowed, access_blocked')
+      .eq('id', organizationId)
+      .single(),
+    supabase
+      .from('organization_members')
+      .select('id', { count: 'exact', head: true })
+      .eq('organization_id', organizationId)
+      .eq('status', 'active'),
+  ])
+
+  if (organizationResult.error) {
+    throw organizationResult.error
+  }
+
+  if (memberCountResult.error) {
+    throw memberCountResult.error
+  }
+
+  const org = organizationResult.data!
+  const activeMemberCount = memberCountResult.count ?? 0
+
+  return {
+    planType: (org.plan_type as PlanType) ?? DEFAULT_PLAN_TYPE,
+    planStatus: (org.plan_status as PlanStatus) ?? DEFAULT_PLAN_STATUS,
+    maxMembersAllowed: org.max_members_allowed ?? DEFAULT_FREE_MAX_MEMBERS,
+    accessBlocked: org.access_blocked ?? false,
+    activeMemberCount,
+  }
+}
+
+function assertOrganizationCanAddMembers(plan: OrganizationPlanState) {
+  if (plan.accessBlocked || plan.planStatus === 'blocked') {
+    throw new OrganizationServiceError('Organization access is blocked. Contact support.', 403)
+  }
+
+  if (plan.planStatus === 'past_due') {
+    throw OrganizationServiceError.upgradeRequired('Billing is past due. Please contact support.')
+  }
+
+  if (plan.maxMembersAllowed && plan.activeMemberCount >= plan.maxMembersAllowed) {
+    throw OrganizationServiceError.upgradeRequired(
+      plan.maxMembersAllowed <= 1
+        ? 'Your current plan allows only one active member. Upgrade to invite employees.'
+        : `Your current plan limit is ${plan.maxMembersAllowed} active members. Upgrade to add more.`,
+    )
+  }
 }
 
 export async function getCurrentOrganizationContext(
@@ -384,6 +472,9 @@ export async function inviteOrganizationMember(
   if (normalizedEmail === normalizeInviteEmail(inviterProfile.profile.email)) {
     throw new OrganizationServiceError('You cannot invite your own account.', 400)
   }
+
+  const plan = await getOrganizationPlanState(supabase, input.organizationId)
+  assertOrganizationCanAddMembers(plan)
 
   const existingMembers = await listOrganizationMembers(supabase, input.organizationId)
   const existingMember = existingMembers.find(
