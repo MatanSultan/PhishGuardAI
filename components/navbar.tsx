@@ -140,6 +140,8 @@ export function Navbar({ variant = 'landing', organizationState = null, isPlatfo
   ]
 
   const links = variant === 'landing' ? landingLinks : appLinks
+  const isLinkActive = (href: string) =>
+    variant === 'app' ? pathname === href || pathname.startsWith(`${href}/`) : pathname === href
 
   const handleSignOut = async () => {
     await fetch('/api/auth/signout', {
@@ -169,7 +171,7 @@ export function Navbar({ variant = 'landing', organizationState = null, isPlatfo
 
         <div className="hidden items-center gap-1 md:flex">
           {links.map((link) => {
-            const isActive = 'icon' in link && pathname === link.href
+            const isActive = 'icon' in link && isLinkActive(link.href)
             const Icon = 'icon' in link ? link.icon : null
 
             return (
@@ -289,7 +291,7 @@ export function Navbar({ variant = 'landing', organizationState = null, isPlatfo
         <div className="border-t border-border md:hidden">
           <div className="container mx-auto space-y-1 px-4 py-4">
             {links.map((link) => {
-              const isActive = 'icon' in link && pathname === link.href
+              const isActive = 'icon' in link && isLinkActive(link.href)
               const Icon = 'icon' in link ? link.icon : null
 
               return (

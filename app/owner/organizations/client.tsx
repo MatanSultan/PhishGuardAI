@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useEffect, useMemo, useState } from 'react'
 import {
@@ -18,7 +18,6 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Textarea } from '@/components/ui/textarea'
 import { getDirection } from '@/lib/i18n'
 import { useLocale } from '@/lib/locale-context'
@@ -43,8 +42,21 @@ import {
   type FollowUpStatus,
   type OwnerOrg,
   type SectionKey,
-  sectionKeys,
 } from './types'
+
+interface OwnerOrganizationsClientProps {
+  initialOrganizations: OwnerOrg[]
+  initialError: string | null
+  initialOwnerEmail: string | null
+  initialDidLoad: boolean
+}
+
+type SectionItem = {
+  key: SectionKey
+  label: string
+  description: string
+  badge?: number
+}
 
 function getTimestamp(value?: string | null) {
   if (!value) return 0
@@ -61,19 +73,83 @@ function getPriorityScore(org: OwnerOrg) {
   return score
 }
 
-export default function OwnerOrganizationsClient() {
+function OwnerSectionNav({
+  isRtl,
+  title,
+  description,
+  items,
+  activeSection,
+  onSelect,
+}: {
+  isRtl: boolean
+  title: string
+  description: string
+  items: SectionItem[]
+  activeSection: SectionKey
+  onSelect: (section: SectionKey) => void
+}) {
+  return (
+    <aside className="order-1 xl:order-2" dir={isRtl ? 'rtl' : 'ltr'}>
+      <Card className="sticky top-24 rounded-3xl border-border/60 shadow-sm">
+        <CardHeader>
+          <CardTitle>{title}</CardTitle>
+          <CardDescription>{description}</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          {items.map((item) => {
+            const isActive = item.key === activeSection
+
+            return (
+              <button
+                key={item.key}
+                type="button"
+                onClick={() => onSelect(item.key)}
+                className={cn(
+                  'w-full rounded-2xl border p-3 transition',
+                  isRtl ? 'text-right' : 'text-left',
+                  isActive
+                    ? 'border-primary/40 bg-primary/5 text-primary'
+                    : 'border-border/60 bg-background hover:border-primary/20 hover:bg-muted/40',
+                )}
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="space-y-1">
+                    <div className={cn('flex items-center gap-2', isRtl ? 'justify-end' : 'justify-start')}>
+                      {item.badge ? <Badge variant={isActive ? 'default' : 'secondary'}>{item.badge}</Badge> : null}
+                      <span className="font-medium">{item.label}</span>
+                    </div>
+                    <p className="text-sm text-muted-foreground">{item.description}</p>
+                  </div>
+                </div>
+              </button>
+            )
+          })}
+        </CardContent>
+      </Card>
+    </aside>
+  )
+}
+
+export default function OwnerOrganizationsClient({
+  initialOrganizations,
+  initialError,
+  initialOwnerEmail,
+  initialDidLoad,
+}: OwnerOrganizationsClientProps) {
   const { locale } = useLocale()
   const activeLocale = locale === 'he' ? 'he' : 'en'
   const t = ownerConsoleCopy[activeLocale]
   const isRtl = getDirection(activeLocale) === 'rtl'
 
-  const [organizations, setOrganizations] = useState<OwnerOrg[]>([])
-  const [loading, setLoading] = useState(true)
-  const [feedback, setFeedback] = useState<FeedbackState>(null)
+  const [organizations, setOrganizations] = useState<OwnerOrg[]>(initialOrganizations)
+  const [loading, setLoading] = useState(!initialDidLoad && !initialError)
+  const [feedback, setFeedback] = useState<FeedbackState>(
+    initialError ? { kind: 'error', message: initialError } : null,
+  )
   const [section, setSection] = useState<SectionKey>('overview')
   const [filter, setFilter] = useState<FilterKey>('all')
   const [search, setSearch] = useState('')
-  const [selectedOrgId, setSelectedOrgId] = useState<string | null>(null)
+  const [selectedOrgId, setSelectedOrgId] = useState<string | null>(initialOrganizations[0]?.id ?? null)
   const [savingId, setSavingId] = useState<string | null>(null)
   const [noteDrafts, setNoteDrafts] = useState<Record<string, string>>({})
   const [billingDrafts, setBillingDrafts] = useState<Record<string, string>>({})
@@ -88,11 +164,7 @@ export default function OwnerOrganizationsClient() {
       const payload = await response.json().catch(() => null)
 
       if (!response.ok) {
-        setFeedback({
-          kind: 'error',
-          message: payload?.error ?? t.messages.loadError,
-        })
-        setOrganizations([])
+        setFeedback({ kind: 'error', message: payload?.error ?? t.messages.loadError })
         setLoading(false)
         return
       }
@@ -106,18 +178,18 @@ export default function OwnerOrganizationsClient() {
       )
       setLoading(false)
     } catch (error) {
-      setFeedback({
-        kind: 'error',
-        message: error instanceof Error ? error.message : t.messages.loadError,
-      })
-      setOrganizations([])
+      setFeedback({ kind: 'error', message: error instanceof Error ? error.message : t.messages.loadError })
       setLoading(false)
     }
   }
 
   useEffect(() => {
+    if (initialDidLoad || initialError) {
+      return
+    }
+
     void load()
-  }, [])
+  }, [initialDidLoad, initialError])
 
   const stats = useMemo(
     () => ({
@@ -220,10 +292,7 @@ export default function OwnerOrganizationsClient() {
       const payload = await response.json().catch(() => null)
 
       if (!response.ok) {
-        setFeedback({
-          kind: 'error',
-          message: payload?.error ?? t.messages.updateError,
-        })
+        setFeedback({ kind: 'error', message: payload?.error ?? t.messages.updateError })
         return
       }
 
@@ -248,10 +317,7 @@ export default function OwnerOrganizationsClient() {
 
       setFeedback({ kind: 'success', message: successMessage ?? t.messages.updated })
     } catch (error) {
-      setFeedback({
-        kind: 'error',
-        message: error instanceof Error ? error.message : t.messages.updateError,
-      })
+      setFeedback({ kind: 'error', message: error instanceof Error ? error.message : t.messages.updateError })
     } finally {
       setSavingId(null)
     }
@@ -287,6 +353,52 @@ export default function OwnerOrganizationsClient() {
     return signals
   }
 
+  const sectionItems = useMemo<SectionItem[]>(
+    () => [
+      { key: 'overview', label: t.sections.overview, description: t.overview.description },
+      {
+        key: 'organizations',
+        label: t.sections.organizations,
+        description: t.organizations.description,
+        badge: filteredOrganizations.length || undefined,
+      },
+      {
+        key: 'plans',
+        label: t.sections.plans,
+        description: t.plans.description,
+        badge: selectedOrganization?.limit_reached || selectedOrganization?.access_blocked ? 1 : undefined,
+      },
+      {
+        key: 'activity',
+        label: t.sections.activity,
+        description: t.activity.description,
+        badge: stats.attention || undefined,
+      },
+    ],
+    [
+      filteredOrganizations.length,
+      selectedOrganization?.access_blocked,
+      selectedOrganization?.limit_reached,
+      stats.attention,
+      t.activity.description,
+      t.organizations.description,
+      t.overview.description,
+      t.plans.description,
+      t.sections.activity,
+      t.sections.organizations,
+      t.sections.overview,
+      t.sections.plans,
+    ],
+  )
+
+  const activeSectionMeta =
+    sectionItems.find((item) => item.key === section) ??
+    sectionItems[0] ?? {
+      key: 'overview' as const,
+      label: t.sections.overview,
+      description: t.overview.description,
+    }
+
   if (loading) {
     return <OwnerConsoleSkeleton />
   }
@@ -301,7 +413,7 @@ export default function OwnerOrganizationsClient() {
           </CardHeader>
           <CardContent className="flex flex-wrap gap-3">
             <Button onClick={() => void load()}>
-              <RefreshCw className="ltr:mr-2 rtl:ml-2 h-4 w-4" />
+              <RefreshCw className="h-4 w-4 ltr:mr-2 rtl:ml-2" />
               {t.refresh}
             </Button>
           </CardContent>
@@ -318,6 +430,504 @@ export default function OwnerOrganizationsClient() {
     )
   }
 
+  const renderOverviewSection = () => (
+    <>
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <MetricCard title={t.badges.total} value={stats.total} description={t.overview.description} icon={Building2} />
+        <MetricCard title={t.badges.attention} value={stats.attention} description={t.activity.opportunitiesDescription} icon={AlertTriangle} />
+        <MetricCard title={t.badges.blocked} value={stats.blocked} description={t.alerts.blocked} icon={ShieldCheck} />
+        <MetricCard title={t.badges.active} value={stats.active} description={`${stats.pendingInvites} ${t.activity.pendingInvites.toLowerCase()}`} icon={TrendingUp} />
+      </div>
+
+      <div className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
+        <Card className="rounded-3xl">
+          <CardHeader>
+            <CardTitle>{t.overview.attentionTitle}</CardTitle>
+            <CardDescription>{t.overview.attentionDescription}</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {priorityOrganizations.length ? (
+              priorityOrganizations.map((organization) => (
+                <PriorityRow
+                  key={organization.id}
+                  title={organization.name}
+                  subtitle={`${formatSegment(organization.organization_type)} • ${formatStatus(organization.plan_status)}`}
+                  meta={`${t.organizations.lastActivity}: ${formatDate(organization.last_activity)}`}
+                  badges={renderSignals(organization)}
+                  actionLabel={t.overview.openPlans}
+                  onAction={() => setSectionAndOrg('plans', organization.id)}
+                />
+              ))
+            ) : (
+              <PanelEmptyState title={t.overview.attentionTitle} description={t.overview.attentionEmpty} compact />
+            )}
+          </CardContent>
+        </Card>
+
+        <div className="space-y-6">
+          <Card className="rounded-3xl">
+            <CardHeader>
+              <CardTitle>{t.overview.recentTitle}</CardTitle>
+              <CardDescription>{t.overview.recentDescription}</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {recentOrganizations.length ? (
+                recentOrganizations.map((organization) => (
+                  <SimpleInfoRow
+                    key={organization.id}
+                    title={organization.name}
+                    subtitle={`${formatSegment(organization.organization_type)} • ${formatDate(organization.created_at)}`}
+                    badge={formatStatus(organization.plan_status)}
+                  />
+                ))
+              ) : (
+                <PanelEmptyState title={t.overview.recentTitle} description={t.overview.recentEmpty} compact />
+              )}
+            </CardContent>
+          </Card>
+
+          <Card className="rounded-3xl">
+            <CardHeader>
+              <CardTitle>{t.overview.mixTitle}</CardTitle>
+              <CardDescription>{t.overview.mixDescription}</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <PlanMixRow label={t.filters.free} count={stats.free} total={stats.total} />
+              <PlanMixRow label={t.filters.trial} count={stats.trial} total={stats.total} />
+              <PlanMixRow label={t.filters.paid} count={stats.paid} total={stats.total} />
+              <PlanMixRow label={t.filters.blocked} count={stats.blocked} total={stats.total} />
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    </>
+  )
+
+  const renderOrganizationsSection = () => (
+    <Card className="rounded-3xl">
+      <CardHeader>
+        <CardTitle>{t.organizations.title}</CardTitle>
+        <CardDescription>{t.organizations.description}</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-5">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
+          <div className="relative flex-1">
+            <Search className="pointer-events-none absolute inset-y-0 left-3 my-auto h-4 w-4 text-muted-foreground rtl:left-auto rtl:right-3" />
+            <Input
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder={t.filters.searchPlaceholder}
+              className="rounded-xl bg-background pl-9 rtl:pl-3 rtl:pr-9"
+            />
+          </div>
+          <Select value={filter} onValueChange={(value) => setFilter(value as FilterKey)}>
+            <SelectTrigger className="w-full rounded-xl lg:w-[220px]">
+              <SelectValue placeholder={t.filters.label} />
+            </SelectTrigger>
+            <SelectContent align={isRtl ? 'end' : 'start'}>
+              {filterKeys.map((key) => (
+                <SelectItem key={key} value={key}>
+                  {t.filters[key]}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
+          <Card className="rounded-3xl border-dashed">
+            <CardContent className="space-y-3 p-4">
+              {filteredOrganizations.length ? (
+                filteredOrganizations.map((organization) => {
+                  const isSelected = organization.id === selectedOrganization?.id
+
+                  return (
+                    <button
+                      key={organization.id}
+                      type="button"
+                      onClick={() => setSelectedOrgId(organization.id)}
+                      className={cn(
+                        'w-full rounded-2xl border p-4 transition hover:border-primary/40 hover:bg-muted/30',
+                        isSelected ? 'border-primary/60 bg-primary/5 shadow-sm' : 'border-border/60',
+                        isRtl ? 'text-right' : 'text-left',
+                      )}
+                    >
+                      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                        <div className="space-y-2">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <p className="font-semibold">{organization.name}</p>
+                            <Badge variant="outline">{formatStatus(organization.plan_status)}</Badge>
+                            {organization.access_blocked ? <Badge variant="destructive">{t.alerts.blocked}</Badge> : null}
+                            {organization.limit_reached ? <Badge variant="secondary">{t.alerts.atLimit}</Badge> : null}
+                          </div>
+                          <div className="space-y-1 text-sm text-muted-foreground">
+                            <p>{formatSegment(organization.organization_type)} • {organization.slug}</p>
+                            <p>{t.organizations.members}: {organization.active_members}/{organization.max_members_allowed}</p>
+                          </div>
+                        </div>
+
+                        <div className={cn('space-y-1 text-sm text-muted-foreground', isRtl ? 'lg:text-left' : 'lg:text-right')}>
+                          <p>{t.organizations.lastActivity}: {formatDate(organization.last_activity)}</p>
+                          <p>{t.activity.pendingInvites}: {organization.pending_invites ?? 0}</p>
+                        </div>
+                      </div>
+                    </button>
+                  )
+                })
+              ) : (
+                <PanelEmptyState title={t.organizations.title} description={t.organizations.empty} compact />
+              )}
+            </CardContent>
+          </Card>
+
+          <Card className="rounded-3xl">
+            <CardHeader>
+              <CardTitle>{t.organizations.selectedTitle}</CardTitle>
+              <CardDescription>{t.organizations.selectedDescription}</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {selectedOrganization ? (
+                <div className="space-y-5">
+                  <div className="space-y-3">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h3 className="text-xl font-semibold">{selectedOrganization.name}</h3>
+                      <Badge variant="outline">{formatStatus(selectedOrganization.plan_status)}</Badge>
+                    </div>
+                    <div className="grid gap-3 text-sm text-muted-foreground sm:grid-cols-2">
+                      <InfoField label={t.organizations.segment} value={formatSegment(selectedOrganization.organization_type)} />
+                      <InfoField label={t.organizations.slug} value={selectedOrganization.slug} />
+                      <InfoField label={t.organizations.members} value={`${selectedOrganization.active_members}/${selectedOrganization.max_members_allowed}`} />
+                      <InfoField label={t.organizations.totalMembers} value={String(selectedOrganization.total_members)} />
+                      <InfoField label={t.organizations.pendingInvites} value={String(selectedOrganization.pending_invites ?? 0)} />
+                      <InfoField label={t.organizations.lastActivity} value={formatDate(selectedOrganization.last_activity)} />
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap gap-2">
+                    {renderSignals(selectedOrganization).map((signal) => (
+                      <Badge key={signal} variant="secondary">{signal}</Badge>
+                    ))}
+                  </div>
+
+                  <div className="flex flex-wrap gap-2">
+                    <Button onClick={() => setSection('plans')}>{t.organizations.openPlans}</Button>
+                    <Button variant="outline" onClick={() => setSection('activity')}>{t.organizations.openActivity}</Button>
+                  </div>
+                </div>
+              ) : (
+                <PanelEmptyState title={t.organizations.selectedTitle} description={t.organizations.noSelection} compact />
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      </CardContent>
+    </Card>
+  )
+
+  const renderPlansSection = () => (
+    <Card className="rounded-3xl">
+      <CardHeader>
+        <CardTitle>{t.plans.title}</CardTitle>
+        <CardDescription>{t.plans.description}</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-5">
+        <div className="max-w-sm">
+          <p className="mb-2 text-sm font-medium text-foreground">{t.plans.orgLabel}</p>
+          <Select value={selectedOrganization?.id ?? ''} onValueChange={(value) => setSelectedOrgId(value)}>
+            <SelectTrigger className="rounded-xl">
+              <SelectValue placeholder={t.plans.orgLabel} />
+            </SelectTrigger>
+            <SelectContent align={isRtl ? 'end' : 'start'}>
+              {organizations.map((organization) => (
+                <SelectItem key={organization.id} value={organization.id}>
+                  {organization.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        {selectedOrganization ? (
+          <>
+            <div className="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
+              <Card className="rounded-3xl border-dashed">
+                <CardHeader>
+                  <CardTitle>{t.plans.accessTitle}</CardTitle>
+                  <CardDescription>{t.plans.accessDescription}</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4 text-sm">
+                  <InfoField label={t.plans.currentPlan} value={formatPlanType(selectedOrganization.plan_type)} />
+                  <InfoField label={t.plans.currentStatus} value={formatStatus(selectedOrganization.plan_status)} />
+                  <InfoField label={t.plans.memberUsage} value={`${selectedOrganization.active_members}/${selectedOrganization.max_members_allowed}`} />
+                  <InfoField label={t.plans.trialEnds} value={formatDate(selectedOrganization.trial_ends_at)} />
+                  <InfoField
+                    label={t.plans.followUpLabel}
+                    value={t.followUp.options[(selectedOrganization.follow_up_status ?? 'new') as keyof typeof t.followUp.options]}
+                  />
+                  <div className="flex flex-wrap gap-2 pt-2">
+                    {renderSignals(selectedOrganization).map((signal) => (
+                      <Badge key={signal} variant="secondary">{signal}</Badge>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="rounded-3xl">
+                <CardHeader>
+                  <CardTitle>{t.plans.actionsTitle}</CardTitle>
+                  <CardDescription>{t.plans.actionsDescription}</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-5">
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      variant="outline"
+                      onClick={() =>
+                        void patchOrganization(selectedOrganization.id, {
+                          plan_status: 'trial',
+                          plan_type: selectedOrganization.plan_type === 'free' ? 'growth' : selectedOrganization.plan_type,
+                          access_blocked: false,
+                          trial_ends_at: new Date(Date.now() + 14 * 86400000).toISOString(),
+                          max_members_allowed: Math.max(selectedOrganization.max_members_allowed ?? 1, (selectedOrganization.active_members ?? 0) + 5),
+                        })
+                      }
+                      disabled={savingId === selectedOrganization.id}
+                    >
+                      {t.plans.startTrial}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={() =>
+                        void patchOrganization(selectedOrganization.id, {
+                          plan_status: 'active_paid',
+                          plan_type: selectedOrganization.plan_type === 'free' ? 'growth' : selectedOrganization.plan_type,
+                          access_blocked: false,
+                          max_members_allowed: Math.max(selectedOrganization.max_members_allowed ?? 1, (selectedOrganization.active_members ?? 0) + 25),
+                        })
+                      }
+                      disabled={savingId === selectedOrganization.id}
+                    >
+                      {t.plans.markPaid}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={() =>
+                        void patchOrganization(selectedOrganization.id, {
+                          plan_status: 'free',
+                          plan_type: 'free',
+                          access_blocked: false,
+                          max_members_allowed: 1,
+                        })
+                      }
+                      disabled={savingId === selectedOrganization.id}
+                    >
+                      {t.plans.setFree}
+                    </Button>
+                    <Button
+                      variant={selectedOrganization.access_blocked ? 'secondary' : 'destructive'}
+                      onClick={() =>
+                        void patchOrganization(selectedOrganization.id, {
+                          access_blocked: !selectedOrganization.access_blocked,
+                          plan_status: selectedOrganization.access_blocked ? 'active_paid' : 'blocked',
+                        })
+                      }
+                      disabled={savingId === selectedOrganization.id}
+                    >
+                      {selectedOrganization.access_blocked ? t.plans.unblock : t.plans.block}
+                    </Button>
+                  </div>
+
+                  <div className="rounded-2xl border border-border/60 bg-muted/30 p-4">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+                      <div className="flex-1">
+                        <p className="mb-2 text-sm font-medium">{t.plans.limitLabel}</p>
+                        <Input
+                          type="number"
+                          min={1}
+                          value={limitDrafts[selectedOrganization.id] ?? String(selectedOrganization.max_members_allowed ?? 1)}
+                          onChange={(event) =>
+                            setLimitDrafts((current) => ({ ...current, [selectedOrganization.id]: event.target.value }))
+                          }
+                          className="rounded-xl"
+                        />
+                        <p className="mt-2 text-xs text-muted-foreground">{t.plans.limitHint}</p>
+                      </div>
+                      <Button onClick={() => handleLimitSave(selectedOrganization)} disabled={savingId === selectedOrganization.id}>
+                        {t.plans.saveLimit}
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div className="rounded-2xl border border-border/60 bg-muted/30 p-4">
+                    <p className="mb-2 text-sm font-medium">{t.plans.followUpLabel}</p>
+                    <Select
+                      value={selectedOrganization.follow_up_status ?? 'new'}
+                      onValueChange={(value) =>
+                        void patchOrganization(selectedOrganization.id, { follow_up_status: value as FollowUpStatus })
+                      }
+                    >
+                      <SelectTrigger className="rounded-xl">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent align={isRtl ? 'end' : 'start'}>
+                        {followUpKeys.map((key) => (
+                          <SelectItem key={key} value={key}>
+                            {t.followUp.options[key]}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            <div className="grid gap-6 xl:grid-cols-2">
+              <Card className="rounded-3xl">
+                <CardHeader>
+                  <CardTitle>{t.followUp.billingTitle}</CardTitle>
+                  <CardDescription>{t.followUp.billingDescription}</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <Textarea
+                    value={billingDrafts[selectedOrganization.id] ?? selectedOrganization.billing_notes ?? ''}
+                    onChange={(event) =>
+                      setBillingDrafts((current) => ({ ...current, [selectedOrganization.id]: event.target.value }))
+                    }
+                    placeholder={t.followUp.billingPlaceholder}
+                    className="min-h-[140px] rounded-2xl"
+                  />
+                  <Button
+                    variant="outline"
+                    onClick={() =>
+                      void patchOrganization(selectedOrganization.id, {
+                        billing_notes: billingDrafts[selectedOrganization.id] ?? selectedOrganization.billing_notes ?? '',
+                      })
+                    }
+                    disabled={savingId === selectedOrganization.id}
+                  >
+                    <CreditCard className="h-4 w-4 ltr:mr-2 rtl:ml-2" />
+                    {t.followUp.saveBilling}
+                  </Button>
+                </CardContent>
+              </Card>
+
+              <Card className="rounded-3xl">
+                <CardHeader>
+                  <CardTitle>{t.followUp.noteTitle}</CardTitle>
+                  <CardDescription>{t.followUp.noteDescription}</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <Textarea
+                    value={noteDrafts[selectedOrganization.id] ?? selectedOrganization.owner_note ?? ''}
+                    onChange={(event) =>
+                      setNoteDrafts((current) => ({ ...current, [selectedOrganization.id]: event.target.value }))
+                    }
+                    placeholder={t.followUp.notePlaceholder}
+                    className="min-h-[140px] rounded-2xl"
+                  />
+                  <Button
+                    variant="outline"
+                    onClick={() =>
+                      void patchOrganization(selectedOrganization.id, {
+                        owner_note: noteDrafts[selectedOrganization.id] ?? selectedOrganization.owner_note ?? '',
+                      })
+                    }
+                    disabled={savingId === selectedOrganization.id}
+                  >
+                    <Sparkles className="h-4 w-4 ltr:mr-2 rtl:ml-2" />
+                    {t.followUp.saveNote}
+                  </Button>
+                </CardContent>
+              </Card>
+            </div>
+          </>
+        ) : (
+          <PanelEmptyState title={t.plans.title} description={t.plans.noSelection} />
+        )}
+      </CardContent>
+    </Card>
+  )
+
+  const renderActivitySection = () => (
+    <>
+      <div className="grid gap-4 md:grid-cols-3">
+        <MetricCard title={t.badges.active} value={stats.active} description={t.activity.activeDescription} icon={TrendingUp} />
+        <MetricCard title={t.badges.attention} value={stats.attention} description={t.activity.opportunitiesDescription} icon={AlertTriangle} />
+        <MetricCard title={t.activity.pendingInvites} value={stats.pendingInvites} description={t.activity.description} icon={Clock3} />
+      </div>
+
+      <div className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
+        <Card className="rounded-3xl">
+          <CardHeader>
+            <CardTitle>{t.activity.opportunitiesTitle}</CardTitle>
+            <CardDescription>{t.activity.opportunitiesDescription}</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {priorityOrganizations.length ? (
+              priorityOrganizations.map((organization) => (
+                <PriorityRow
+                  key={organization.id}
+                  title={organization.name}
+                  subtitle={`${t.activity.attempts7}: ${organization.attempts_7d ?? 0} • ${t.activity.pendingInvites}: ${organization.pending_invites ?? 0}`}
+                  meta={`${t.organizations.lastActivity}: ${formatDate(organization.last_activity)}`}
+                  badges={renderSignals(organization)}
+                  actionLabel={t.activity.openPlans}
+                  onAction={() => setSectionAndOrg('plans', organization.id)}
+                />
+              ))
+            ) : (
+              <PanelEmptyState title={t.activity.opportunitiesTitle} description={t.activity.opportunitiesEmpty} compact />
+            )}
+          </CardContent>
+        </Card>
+
+        <div className="space-y-6">
+          <Card className="rounded-3xl">
+            <CardHeader>
+              <CardTitle>{t.activity.activeTitle}</CardTitle>
+              <CardDescription>{t.activity.activeDescription}</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {activeOrganizations.length ? (
+                activeOrganizations.map((organization) => (
+                  <SimpleInfoRow
+                    key={organization.id}
+                    title={organization.name}
+                    subtitle={`${t.activity.attempts30}: ${organization.attempts_30d ?? 0}`}
+                    badge={formatDate(organization.last_activity)}
+                  />
+                ))
+              ) : (
+                <PanelEmptyState title={t.activity.activeTitle} description={t.activity.activeEmpty} compact />
+              )}
+            </CardContent>
+          </Card>
+
+          <Card className="rounded-3xl">
+            <CardHeader>
+              <CardTitle>{t.activity.quietTitle}</CardTitle>
+              <CardDescription>{t.activity.quietDescription}</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {quietOrganizations.length ? (
+                quietOrganizations.map((organization) => (
+                  <SimpleInfoRow
+                    key={organization.id}
+                    title={organization.name}
+                    subtitle={`${t.filters.free}: ${formatStatus(organization.plan_status)}`}
+                    badge={formatDate(organization.created_at)}
+                  />
+                ))
+              ) : (
+                <PanelEmptyState title={t.activity.quietTitle} description={t.activity.quietEmpty} compact />
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    </>
+  )
+
   return (
     <div className="container mx-auto space-y-6 px-4 py-8 lg:px-8">
       <header className="rounded-3xl border border-border/60 bg-gradient-to-b from-background to-muted/30 p-6 shadow-sm">
@@ -333,16 +943,21 @@ export default function OwnerOrganizationsClient() {
               <SummaryBadge label={t.badges.attention} value={stats.attention} tone="warning" />
               <SummaryBadge label={t.badges.blocked} value={stats.blocked} tone="danger" />
               <SummaryBadge label={t.badges.active} value={stats.active} />
+              {initialOwnerEmail ? (
+                <div className="rounded-full border border-border/60 bg-background px-3 py-1.5 text-sm text-muted-foreground">
+                  {initialOwnerEmail}
+                </div>
+              ) : null}
             </div>
           </div>
 
           <div className="flex flex-wrap gap-2">
-            <Button onClick={() => setSection('activity')}>
-              <Sparkles className="ltr:mr-2 rtl:ml-2 h-4 w-4" />
+            <Button onClick={() => setSection('organizations')}>
+              <Building2 className="h-4 w-4 ltr:mr-2 rtl:ml-2" />
               {t.primaryAction}
             </Button>
             <Button variant="outline" onClick={() => void load()}>
-              <RefreshCw className="ltr:mr-2 rtl:ml-2 h-4 w-4" />
+              <RefreshCw className="h-4 w-4 ltr:mr-2 rtl:ml-2" />
               {t.refresh}
             </Button>
           </div>
@@ -362,509 +977,35 @@ export default function OwnerOrganizationsClient() {
         </div>
       ) : null}
 
-      <Tabs value={section} onValueChange={(value) => setSection(value as SectionKey)} className="space-y-6">
-        <TabsList className="grid h-auto w-full grid-cols-2 gap-2 rounded-2xl bg-muted/60 p-1 md:grid-cols-4">
-          {sectionKeys.map((key) => (
-            <TabsTrigger key={key} value={key} className="h-auto rounded-xl px-4 py-3 text-sm">
-              {t.sections[key]}
-            </TabsTrigger>
-          ))}
-        </TabsList>
-
-        <TabsContent value="overview" className="space-y-6">
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-            <MetricCard title={t.badges.total} value={stats.total} description={t.overview.description} icon={Building2} />
-            <MetricCard title={t.badges.attention} value={stats.attention} description={t.activity.opportunitiesDescription} icon={AlertTriangle} />
-            <MetricCard title={t.badges.blocked} value={stats.blocked} description={t.alerts.blocked} icon={ShieldCheck} />
-            <MetricCard title={t.badges.active} value={stats.active} description={`${stats.pendingInvites} ${t.activity.pendingInvites.toLowerCase()}`} icon={TrendingUp} />
-          </div>
-
-          <div className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
-            <Card className="rounded-3xl">
-              <CardHeader>
-                <CardTitle>{t.overview.attentionTitle}</CardTitle>
-                <CardDescription>{t.overview.attentionDescription}</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {priorityOrganizations.length ? (
-                  priorityOrganizations.map((organization) => (
-                    <PriorityRow
-                      key={organization.id}
-                      title={organization.name}
-                      subtitle={`${formatSegment(organization.organization_type)} • ${formatStatus(organization.plan_status)}`}
-                      meta={`${t.organizations.lastActivity}: ${formatDate(organization.last_activity)}`}
-                      badges={renderSignals(organization)}
-                      actionLabel={t.overview.openPlans}
-                      onAction={() => setSectionAndOrg('plans', organization.id)}
-                    />
-                  ))
-                ) : (
-                  <PanelEmptyState title={t.overview.attentionTitle} description={t.overview.attentionEmpty} compact />
-                )}
-              </CardContent>
-            </Card>
-
-            <div className="space-y-6">
-              <Card className="rounded-3xl">
-                <CardHeader>
-                  <CardTitle>{t.overview.recentTitle}</CardTitle>
-                  <CardDescription>{t.overview.recentDescription}</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  {recentOrganizations.length ? (
-                    recentOrganizations.map((organization) => (
-                      <SimpleInfoRow
-                        key={organization.id}
-                        title={organization.name}
-                        subtitle={`${formatSegment(organization.organization_type)} • ${formatDate(organization.created_at)}`}
-                        badge={formatStatus(organization.plan_status)}
-                      />
-                    ))
-                  ) : (
-                    <PanelEmptyState title={t.overview.recentTitle} description={t.overview.recentEmpty} compact />
-                  )}
-                </CardContent>
-              </Card>
-
-              <Card className="rounded-3xl">
-                <CardHeader>
-                  <CardTitle>{t.overview.mixTitle}</CardTitle>
-                  <CardDescription>{t.overview.mixDescription}</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <PlanMixRow label={t.filters.free} count={stats.free} total={stats.total} />
-                  <PlanMixRow label={t.filters.trial} count={stats.trial} total={stats.total} />
-                  <PlanMixRow label={t.filters.paid} count={stats.paid} total={stats.total} />
-                  <PlanMixRow label={t.filters.blocked} count={stats.blocked} total={stats.total} />
-                </CardContent>
-              </Card>
-            </div>
-          </div>
-        </TabsContent>
-
-        <TabsContent value="organizations" className="space-y-6">
-          <Card className="rounded-3xl">
-            <CardHeader>
-              <CardTitle>{t.organizations.title}</CardTitle>
-              <CardDescription>{t.organizations.description}</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-5">
-              <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
-                <div className="relative flex-1">
-                  <Search className="pointer-events-none absolute inset-y-0 left-3 my-auto h-4 w-4 text-muted-foreground rtl:left-auto rtl:right-3" />
-                  <Input
-                    value={search}
-                    onChange={(event) => setSearch(event.target.value)}
-                    placeholder={t.filters.searchPlaceholder}
-                    className="rounded-xl bg-background pl-9 rtl:pl-3 rtl:pr-9"
-                  />
-                </div>
-                <Select value={filter} onValueChange={(value) => setFilter(value as FilterKey)}>
-                  <SelectTrigger className="w-full rounded-xl lg:w-[220px]">
-                    <SelectValue placeholder={t.filters.label} />
-                  </SelectTrigger>
-                  <SelectContent align={isRtl ? 'end' : 'start'}>
-                    {filterKeys.map((key) => (
-                      <SelectItem key={key} value={key}>
-                        {t.filters[key]}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
-                <Card className="rounded-3xl border-dashed">
-                  <CardContent className="space-y-3 p-4">
-                    {filteredOrganizations.length ? (
-                      filteredOrganizations.map((organization) => {
-                        const isSelected = organization.id === selectedOrganization?.id
-
-                        return (
-                          <button
-                            key={organization.id}
-                            type="button"
-                            onClick={() => setSelectedOrgId(organization.id)}
-                            className={cn(
-                              'w-full rounded-2xl border p-4 text-left transition hover:border-primary/40 hover:bg-muted/30',
-                              isSelected ? 'border-primary/60 bg-primary/5 shadow-sm' : 'border-border/60',
-                            )}
-                          >
-                            <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                              <div className="space-y-2">
-                                <div className="flex flex-wrap items-center gap-2">
-                                  <p className="font-semibold">{organization.name}</p>
-                                  <Badge variant="outline">{formatStatus(organization.plan_status)}</Badge>
-                                  {organization.access_blocked ? <Badge variant="destructive">{t.alerts.blocked}</Badge> : null}
-                                  {organization.limit_reached ? <Badge variant="secondary">{t.alerts.atLimit}</Badge> : null}
-                                </div>
-                                <div className="space-y-1 text-sm text-muted-foreground">
-                                  <p>{formatSegment(organization.organization_type)} • {organization.slug}</p>
-                                  <p>{t.organizations.members}: {organization.active_members}/{organization.max_members_allowed}</p>
-                                </div>
-                              </div>
-
-                              <div className="space-y-1 text-sm text-muted-foreground lg:text-right">
-                                <p>{t.organizations.lastActivity}: {formatDate(organization.last_activity)}</p>
-                                <p>{t.activity.pendingInvites}: {organization.pending_invites ?? 0}</p>
-                              </div>
-                            </div>
-                          </button>
-                        )
-                      })
-                    ) : (
-                      <PanelEmptyState title={t.organizations.title} description={t.organizations.empty} compact />
-                    )}
-                  </CardContent>
-                </Card>
-
-                <Card className="rounded-3xl">
-                  <CardHeader>
-                    <CardTitle>{t.organizations.selectedTitle}</CardTitle>
-                    <CardDescription>{t.organizations.selectedDescription}</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    {selectedOrganization ? (
-                      <div className="space-y-5">
-                        <div className="space-y-3">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <h3 className="text-xl font-semibold">{selectedOrganization.name}</h3>
-                            <Badge variant="outline">{formatStatus(selectedOrganization.plan_status)}</Badge>
-                          </div>
-                          <div className="grid gap-3 text-sm text-muted-foreground sm:grid-cols-2">
-                            <InfoField label={t.organizations.segment} value={formatSegment(selectedOrganization.organization_type)} />
-                            <InfoField label={t.organizations.slug} value={selectedOrganization.slug} />
-                            <InfoField label={t.organizations.members} value={`${selectedOrganization.active_members}/${selectedOrganization.max_members_allowed}`} />
-                            <InfoField label={t.organizations.totalMembers} value={String(selectedOrganization.total_members)} />
-                            <InfoField label={t.organizations.pendingInvites} value={String(selectedOrganization.pending_invites ?? 0)} />
-                            <InfoField label={t.organizations.lastActivity} value={formatDate(selectedOrganization.last_activity)} />
-                          </div>
-                        </div>
-
-                        <div className="flex flex-wrap gap-2">
-                          {renderSignals(selectedOrganization).map((signal) => (
-                            <Badge key={signal} variant="secondary">{signal}</Badge>
-                          ))}
-                        </div>
-
-                        <div className="flex flex-wrap gap-2">
-                          <Button onClick={() => setSection('plans')}>{t.organizations.openPlans}</Button>
-                          <Button variant="outline" onClick={() => setSection('activity')}>{t.organizations.openActivity}</Button>
-                        </div>
-                      </div>
-                    ) : (
-                      <PanelEmptyState title={t.organizations.selectedTitle} description={t.organizations.noSelection} compact />
-                    )}
-                  </CardContent>
-                </Card>
-              </div>
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_280px]" dir="ltr">
+        <div className="order-2 space-y-6 xl:order-1" dir={isRtl ? 'rtl' : 'ltr'}>
+          <Card className="rounded-2xl border-border/60 bg-muted/20">
+            <CardContent className="flex flex-col gap-2 p-5">
+              <p className="text-sm font-medium text-foreground">{activeSectionMeta.label}</p>
+              <p className="text-sm text-muted-foreground">{activeSectionMeta.description}</p>
             </CardContent>
           </Card>
-        </TabsContent>
 
-        <TabsContent value="plans" className="space-y-6">
-          <Card className="rounded-3xl">
-            <CardHeader>
-              <CardTitle>{t.plans.title}</CardTitle>
-              <CardDescription>{t.plans.description}</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-5">
-              <div className="max-w-sm">
-                <p className="mb-2 text-sm font-medium text-foreground">{t.plans.orgLabel}</p>
-                <Select value={selectedOrganization?.id ?? ''} onValueChange={(value) => setSelectedOrgId(value)}>
-                  <SelectTrigger className="rounded-xl">
-                    <SelectValue placeholder={t.plans.orgLabel} />
-                  </SelectTrigger>
-                  <SelectContent align={isRtl ? 'end' : 'start'}>
-                    {organizations.map((organization) => (
-                      <SelectItem key={organization.id} value={organization.id}>
-                        {organization.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+          {section === 'overview' ? renderOverviewSection() : null}
+          {section === 'organizations' ? renderOrganizationsSection() : null}
+          {section === 'plans' ? renderPlansSection() : null}
+          {section === 'activity' ? renderActivitySection() : null}
+        </div>
 
-              {selectedOrganization ? (
-                <>
-                  <div className="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
-                    <Card className="rounded-3xl border-dashed">
-                      <CardHeader>
-                        <CardTitle>{t.plans.accessTitle}</CardTitle>
-                        <CardDescription>{t.plans.accessDescription}</CardDescription>
-                      </CardHeader>
-                      <CardContent className="space-y-4 text-sm">
-                        <InfoField label={t.plans.currentPlan} value={formatPlanType(selectedOrganization.plan_type)} />
-                        <InfoField label={t.plans.currentStatus} value={formatStatus(selectedOrganization.plan_status)} />
-                        <InfoField label={t.plans.memberUsage} value={`${selectedOrganization.active_members}/${selectedOrganization.max_members_allowed}`} />
-                        <InfoField label={t.plans.trialEnds} value={formatDate(selectedOrganization.trial_ends_at)} />
-                        <InfoField
-                          label={t.plans.followUpLabel}
-                          value={t.followUp.options[(selectedOrganization.follow_up_status ?? 'new') as keyof typeof t.followUp.options]}
-                        />
-                        <div className="flex flex-wrap gap-2 pt-2">
-                          {renderSignals(selectedOrganization).map((signal) => (
-                            <Badge key={signal} variant="secondary">
-                              {signal}
-                            </Badge>
-                          ))}
-                        </div>
-                      </CardContent>
-                    </Card>
-
-                    <Card className="rounded-3xl">
-                      <CardHeader>
-                        <CardTitle>{t.plans.actionsTitle}</CardTitle>
-                        <CardDescription>{t.plans.actionsDescription}</CardDescription>
-                      </CardHeader>
-                      <CardContent className="space-y-5">
-                        <div className="flex flex-wrap gap-2">
-                          <Button
-                            variant="outline"
-                            onClick={() =>
-                              void patchOrganization(selectedOrganization.id, {
-                                plan_status: 'trial',
-                                plan_type: selectedOrganization.plan_type === 'free' ? 'growth' : selectedOrganization.plan_type,
-                                access_blocked: false,
-                                trial_ends_at: new Date(Date.now() + 14 * 86_400_000).toISOString(),
-                                max_members_allowed: Math.max(selectedOrganization.max_members_allowed ?? 1, (selectedOrganization.active_members ?? 0) + 5),
-                              })
-                            }
-                            disabled={savingId === selectedOrganization.id}
-                          >
-                            {t.plans.startTrial}
-                          </Button>
-                          <Button
-                            variant="outline"
-                            onClick={() =>
-                              void patchOrganization(selectedOrganization.id, {
-                                plan_status: 'active_paid',
-                                plan_type: selectedOrganization.plan_type === 'free' ? 'growth' : selectedOrganization.plan_type,
-                                access_blocked: false,
-                                max_members_allowed: Math.max(selectedOrganization.max_members_allowed ?? 1, (selectedOrganization.active_members ?? 0) + 25),
-                              })
-                            }
-                            disabled={savingId === selectedOrganization.id}
-                          >
-                            {t.plans.markPaid}
-                          </Button>
-                          <Button
-                            variant="outline"
-                            onClick={() =>
-                              void patchOrganization(selectedOrganization.id, {
-                                plan_status: 'free',
-                                plan_type: 'free',
-                                access_blocked: false,
-                                max_members_allowed: 1,
-                              })
-                            }
-                            disabled={savingId === selectedOrganization.id}
-                          >
-                            {t.plans.setFree}
-                          </Button>
-                          <Button
-                            variant={selectedOrganization.access_blocked ? 'secondary' : 'destructive'}
-                            onClick={() =>
-                              void patchOrganization(selectedOrganization.id, {
-                                access_blocked: !selectedOrganization.access_blocked,
-                                plan_status: selectedOrganization.access_blocked ? 'active_paid' : 'blocked',
-                              })
-                            }
-                            disabled={savingId === selectedOrganization.id}
-                          >
-                            {selectedOrganization.access_blocked ? t.plans.unblock : t.plans.block}
-                          </Button>
-                        </div>
-
-                        <div className="rounded-2xl border border-border/60 bg-muted/30 p-4">
-                          <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
-                            <div className="flex-1">
-                              <p className="mb-2 text-sm font-medium">{t.plans.limitLabel}</p>
-                              <Input
-                                type="number"
-                                min={1}
-                                value={limitDrafts[selectedOrganization.id] ?? String(selectedOrganization.max_members_allowed ?? 1)}
-                                onChange={(event) =>
-                                  setLimitDrafts((current) => ({ ...current, [selectedOrganization.id]: event.target.value }))
-                                }
-                                className="rounded-xl"
-                              />
-                              <p className="mt-2 text-xs text-muted-foreground">{t.plans.limitHint}</p>
-                            </div>
-                            <Button onClick={() => handleLimitSave(selectedOrganization)} disabled={savingId === selectedOrganization.id}>
-                              {t.plans.saveLimit}
-                            </Button>
-                          </div>
-                        </div>
-
-                        <div className="rounded-2xl border border-border/60 bg-muted/30 p-4">
-                          <p className="mb-2 text-sm font-medium">{t.plans.followUpLabel}</p>
-                          <Select
-                            value={selectedOrganization.follow_up_status ?? 'new'}
-                            onValueChange={(value) =>
-                              void patchOrganization(selectedOrganization.id, { follow_up_status: value as FollowUpStatus })
-                            }
-                          >
-                            <SelectTrigger className="rounded-xl">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent align={isRtl ? 'end' : 'start'}>
-                              {followUpKeys.map((key) => (
-                                <SelectItem key={key} value={key}>
-                                  {t.followUp.options[key]}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </div>
-
-                  <div className="grid gap-6 xl:grid-cols-2">
-                    <Card className="rounded-3xl">
-                      <CardHeader>
-                        <CardTitle>{t.followUp.billingTitle}</CardTitle>
-                        <CardDescription>{t.followUp.billingDescription}</CardDescription>
-                      </CardHeader>
-                      <CardContent className="space-y-4">
-                        <Textarea
-                          value={billingDrafts[selectedOrganization.id] ?? selectedOrganization.billing_notes ?? ''}
-                          onChange={(event) =>
-                            setBillingDrafts((current) => ({ ...current, [selectedOrganization.id]: event.target.value }))
-                          }
-                          placeholder={t.followUp.billingPlaceholder}
-                          className="min-h-[140px] rounded-2xl"
-                        />
-                        <Button
-                          variant="outline"
-                          onClick={() =>
-                            void patchOrganization(selectedOrganization.id, {
-                              billing_notes: billingDrafts[selectedOrganization.id] ?? selectedOrganization.billing_notes ?? '',
-                            })
-                          }
-                          disabled={savingId === selectedOrganization.id}
-                        >
-                          <CreditCard className="ltr:mr-2 rtl:ml-2 h-4 w-4" />
-                          {t.followUp.saveBilling}
-                        </Button>
-                      </CardContent>
-                    </Card>
-
-                    <Card className="rounded-3xl">
-                      <CardHeader>
-                        <CardTitle>{t.followUp.noteTitle}</CardTitle>
-                        <CardDescription>{t.followUp.noteDescription}</CardDescription>
-                      </CardHeader>
-                      <CardContent className="space-y-4">
-                        <Textarea
-                          value={noteDrafts[selectedOrganization.id] ?? selectedOrganization.owner_note ?? ''}
-                          onChange={(event) =>
-                            setNoteDrafts((current) => ({ ...current, [selectedOrganization.id]: event.target.value }))
-                          }
-                          placeholder={t.followUp.notePlaceholder}
-                          className="min-h-[140px] rounded-2xl"
-                        />
-                        <Button
-                          variant="outline"
-                          onClick={() =>
-                            void patchOrganization(selectedOrganization.id, {
-                              owner_note: noteDrafts[selectedOrganization.id] ?? selectedOrganization.owner_note ?? '',
-                            })
-                          }
-                          disabled={savingId === selectedOrganization.id}
-                        >
-                          {t.followUp.saveNote}
-                        </Button>
-                      </CardContent>
-                    </Card>
-                  </div>
-                </>
-              ) : (
-                <PanelEmptyState title={t.plans.title} description={t.plans.noSelection} />
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="activity" className="space-y-6">
-          <div className="grid gap-4 md:grid-cols-3">
-            <MetricCard title={t.badges.active} value={stats.active} description={t.activity.activeDescription} icon={TrendingUp} />
-            <MetricCard title={t.badges.attention} value={stats.attention} description={t.activity.opportunitiesDescription} icon={AlertTriangle} />
-            <MetricCard title={t.activity.pendingInvites} value={stats.pendingInvites} description={t.activity.description} icon={Clock3} />
-          </div>
-
-          <div className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
-            <Card className="rounded-3xl">
-              <CardHeader>
-                <CardTitle>{t.activity.opportunitiesTitle}</CardTitle>
-                <CardDescription>{t.activity.opportunitiesDescription}</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {priorityOrganizations.length ? (
-                  priorityOrganizations.map((organization) => (
-                    <PriorityRow
-                      key={organization.id}
-                      title={organization.name}
-                      subtitle={`${t.activity.attempts7}: ${organization.attempts_7d ?? 0} • ${t.activity.pendingInvites}: ${organization.pending_invites ?? 0}`}
-                      meta={`${t.organizations.lastActivity}: ${formatDate(organization.last_activity)}`}
-                      badges={renderSignals(organization)}
-                      actionLabel={t.activity.openPlans}
-                      onAction={() => setSectionAndOrg('plans', organization.id)}
-                    />
-                  ))
-                ) : (
-                  <PanelEmptyState title={t.activity.opportunitiesTitle} description={t.activity.opportunitiesEmpty} compact />
-                )}
-              </CardContent>
-            </Card>
-
-            <div className="space-y-6">
-              <Card className="rounded-3xl">
-                <CardHeader>
-                  <CardTitle>{t.activity.activeTitle}</CardTitle>
-                  <CardDescription>{t.activity.activeDescription}</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  {activeOrganizations.length ? (
-                    activeOrganizations.map((organization) => (
-                      <SimpleInfoRow
-                        key={organization.id}
-                        title={organization.name}
-                        subtitle={`${t.activity.attempts30}: ${organization.attempts_30d ?? 0}`}
-                        badge={formatDate(organization.last_activity)}
-                      />
-                    ))
-                  ) : (
-                    <PanelEmptyState title={t.activity.activeTitle} description={t.activity.activeEmpty} compact />
-                  )}
-                </CardContent>
-              </Card>
-
-              <Card className="rounded-3xl">
-                <CardHeader>
-                  <CardTitle>{t.activity.quietTitle}</CardTitle>
-                  <CardDescription>{t.activity.quietDescription}</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  {quietOrganizations.length ? (
-                    quietOrganizations.map((organization) => (
-                      <SimpleInfoRow
-                        key={organization.id}
-                        title={organization.name}
-                        subtitle={`${formatSegment(organization.organization_type)} • ${formatStatus(organization.plan_status)}`}
-                        badge={t.alerts.inactive}
-                      />
-                    ))
-                  ) : (
-                    <PanelEmptyState title={t.activity.quietTitle} description={t.activity.quietEmpty} compact />
-                  )}
-                </CardContent>
-              </Card>
-            </div>
-          </div>
-        </TabsContent>
-      </Tabs>
+        <OwnerSectionNav
+          isRtl={isRtl}
+          title={activeLocale === 'he' ? 'ניווט פנימי' : 'Internal navigation'}
+          description={
+            activeLocale === 'he'
+              ? 'בחרו אזור אחד בכל פעם כדי לשמור על פוקוס.'
+              : 'Open one management area at a time to keep the page focused.'
+          }
+          items={sectionItems}
+          activeSection={section}
+          onSelect={setSection}
+        />
+      </div>
     </div>
   )
 }
+

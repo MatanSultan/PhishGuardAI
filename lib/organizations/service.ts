@@ -1,4 +1,5 @@
 import { randomBytes } from 'crypto'
+import { cache } from 'react'
 
 import type { SupabaseClient } from '@supabase/supabase-js'
 
@@ -17,6 +18,7 @@ import type { Database, TableInsert, TableRow } from '@/lib/database.types'
 import { getAppUrl } from '@/lib/env'
 import { applyOrganizationStarterDomains } from '@/lib/organizations/defaults'
 import { getProfileBundle } from '@/lib/profile/service'
+import { createServerSupabaseClient } from '@/lib/supabase/server'
 
 type AppSupabaseClient = SupabaseClient<Database>
 
@@ -318,6 +320,13 @@ export async function getCurrentOrganizationContext(
     settings: (settingsResult.data as TableRow<'organization_settings'> | null) ?? null,
   }
 }
+
+export const getServerOrganizationContext = cache(async function getServerOrganizationContext(
+  userId: string,
+) {
+  const supabase = await createServerSupabaseClient()
+  return getCurrentOrganizationContext(supabase, userId)
+})
 
 export async function createOrganization(
   supabase: AppSupabaseClient,

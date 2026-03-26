@@ -1,3 +1,4 @@
+import { cache } from 'react'
 import type { User } from '@supabase/supabase-js'
 
 import { AuthorizationError } from '@/lib/permissions'
@@ -32,7 +33,7 @@ export function isOwnerEmail(email: string | null | undefined) {
   return ownerEmails.includes(normalizedEmail)
 }
 
-export async function getOwnerAccessDetails(
+export const getOwnerAccessDetails = cache(async function getOwnerAccessDetails(
   email: string | null | undefined,
 ): Promise<OwnerAccessDetails> {
   const normalizedEmail = normalizeOwnerEmail(email)
@@ -97,7 +98,7 @@ export async function getOwnerAccessDetails(
       hasServiceRole,
     }
   }
-}
+})
 
 export async function syncOwnerRecord(email: string | null | undefined) {
   const normalizedEmail = normalizeOwnerEmail(email)

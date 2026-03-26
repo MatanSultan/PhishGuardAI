@@ -864,9 +864,15 @@ export async function getOrganizationLeaderboard(
 export async function getOrganizationDashboardData(
   supabase: AppSupabaseClient,
   context: OrganizationContext,
+  preload?: {
+    memberRecords?: OrganizationMemberRecord[]
+    invites?: TableRow<'team_invites'>[]
+  },
 ) {
   const [memberRecords, adminBundle] = await Promise.all([
-    listOrganizationMembers(supabase, context.organization.id),
+    preload?.memberRecords
+      ? Promise.resolve(preload.memberRecords)
+      : listOrganizationMembers(supabase, context.organization.id),
     getProfileBundle(supabase, context.membership.user_id),
   ])
   const memberMetrics = memberRecords.map(toMemberMetric)
@@ -883,9 +889,9 @@ export async function getOrganizationDashboardData(
   const lowEngagement = buildLowEngagementMembers(memberMetrics)
   const employeesNeedingSupport = buildEmployeesNeedingSupport(activeMemberMetrics)
   const attentionFlags = buildAttentionFlags(activeMemberMetrics, attempts)
-  const pendingInvites = (await listTeamInvites(supabase, context.organization.id, 5)).filter(
-    (invite) => invite.status === 'pending',
-  )
+  const inviteSource =
+    preload?.invites ?? (await listTeamInvites(supabase, context.organization.id, 5))
+  const pendingInvites = inviteSource.filter((invite) => invite.status === 'pending').slice(0, 5)
   const channelBreakdown = groupAccuracyBy(
     attempts,
     (attempt) => attempt.simulation?.channel as Channel | undefined,

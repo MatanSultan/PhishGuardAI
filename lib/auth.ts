@@ -1,3 +1,4 @@
+import { cache } from 'react'
 import { redirect } from 'next/navigation'
 
 import { APP_ROUTES, DEFAULT_APP_REDIRECT } from '@/lib/constants'
@@ -19,14 +20,14 @@ export function sanitizeRedirect(target: string | null | undefined, fallback = D
   return target
 }
 
-export async function getSessionUser() {
+export const getSessionUser = cache(async function getSessionUser() {
   const supabase = await createServerSupabaseClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()
 
   return user ?? null
-}
+})
 
 export async function requireSessionUser(next = DEFAULT_APP_REDIRECT) {
   const user = await getSessionUser()

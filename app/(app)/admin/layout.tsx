@@ -1,8 +1,7 @@
 import { redirect } from 'next/navigation'
 
 import { requireSessionUser } from '@/lib/auth'
-import { getCurrentOrganizationContext } from '@/lib/organizations/service'
-import { createServerSupabaseClient } from '@/lib/supabase/server'
+import { getServerOrganizationContext } from '@/lib/organizations/service'
 
 export default async function AdminLayout({
   children,
@@ -10,8 +9,7 @@ export default async function AdminLayout({
   children: React.ReactNode
 }) {
   const user = await requireSessionUser('/admin')
-  const supabase = await createServerSupabaseClient()
-  const context = await getCurrentOrganizationContext(supabase, user.id)
+  const context = await getServerOrganizationContext(user.id)
 
   if (!context || context.membership.role !== 'admin') {
     redirect('/dashboard')

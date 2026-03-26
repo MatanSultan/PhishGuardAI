@@ -2,9 +2,8 @@ import { redirect } from 'next/navigation'
 
 import { Navbar } from '@/components/navbar'
 import { getSessionUser } from '@/lib/auth'
-import { getCurrentOrganizationContext } from '@/lib/organizations/service'
-import { isOwnerUser, syncOwnerRecord } from '@/lib/owner/auth'
-import { createServerSupabaseClient } from '@/lib/supabase/server'
+import { getServerOrganizationContext } from '@/lib/organizations/service'
+import { getOwnerAccessDetails, syncOwnerRecord } from '@/lib/owner/auth'
 
 export default async function OwnerLayout({
   children,
@@ -17,16 +16,17 @@ export default async function OwnerLayout({
     redirect('/auth/signin?next=/owner')
   }
 
-  const isPlatformOwner = await isOwnerUser(user.email)
+  const [ownerAccess, organizationContext] = await Promise.all([
+    getOwnerAccessDetails(user.email),
+    getServerOrganizationContext(user.id),
+  ])
+  const isPlatformOwner = ownerAccess.allowed
 
   if (!isPlatformOwner) {
     redirect('/dashboard')
   }
 
   await syncOwnerRecord(user.email)
-
-  const supabase = await createServerSupabaseClient()
-  const organizationContext = await getCurrentOrganizationContext(supabase, user.id)
 
   return (
     <div className="flex min-h-screen flex-col">

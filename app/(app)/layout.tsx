@@ -4,9 +4,8 @@ import { Navbar } from '@/components/navbar'
 import { HelpAssistant } from '@/components/assistant/help-assistant'
 import type { AssistantRole, AssistantMode } from '@/lib/assistant/context'
 import { getSessionUser } from '@/lib/auth'
-import { getCurrentOrganizationContext } from '@/lib/organizations/service'
-import { isOwnerUser } from '@/lib/owner/auth'
-import { createServerSupabaseClient } from '@/lib/supabase/server'
+import { getServerOrganizationContext } from '@/lib/organizations/service'
+import { getOwnerAccessDetails } from '@/lib/owner/auth'
 
 export default async function AppLayout({
   children,
@@ -19,11 +18,13 @@ export default async function AppLayout({
     redirect('/auth/signin')
   }
 
-  const supabase = await createServerSupabaseClient()
-  const organizationContext = await getCurrentOrganizationContext(supabase, user.id)
+  const [organizationContext, ownerAccess] = await Promise.all([
+    getServerOrganizationContext(user.id),
+    getOwnerAccessDetails(user.email),
+  ])
   const role: AssistantRole = organizationContext ? organizationContext.membership.role : 'individual'
   const mode: AssistantMode = organizationContext ? 'organization' : 'individual'
-  const isPlatformOwner = await isOwnerUser(user.email)
+  const isPlatformOwner = ownerAccess.allowed
 
   return (
     <div className="flex min-h-screen flex-col">
