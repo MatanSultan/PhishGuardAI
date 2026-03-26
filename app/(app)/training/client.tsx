@@ -86,35 +86,41 @@ export default function TrainingPageClient({
     }
     setError(null)
 
-    const response = await fetch('/api/training/next', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ locale }),
-    })
+    try {
+      const response = await fetch('/api/training/next', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ locale }),
+      })
 
-    const payload = await response.json().catch(() => null)
+      const payload = await response.json().catch(() => null)
 
-    if (!response.ok) {
-      setError(payload?.error ?? t.common.error)
+      if (!response.ok) {
+        setError(payload?.error ?? t.common.error)
+        setIsLoading(false)
+        setIsRefreshing(false)
+        return
+      }
+
+      setOrganizationType(payload?.context?.organization?.organization_type ?? null)
+      setOrganizationIndustry(payload?.context?.organization?.industry ?? null)
+      setTrainingData(payload)
+      setResultData(null)
+      setSimulationState('ready')
+      setSelectedAnswer(null)
+      setConfidence(1)
+      setReasoning('')
+      setTimeRemaining(120)
+      setStartedAt(0)
       setIsLoading(false)
       setIsRefreshing(false)
-      return
+    } catch {
+      setError(t.common.error)
+      setIsLoading(false)
+      setIsRefreshing(false)
     }
-
-    setOrganizationType(payload?.context?.organization?.organization_type ?? null)
-    setOrganizationIndustry(payload?.context?.organization?.industry ?? null)
-    setTrainingData(payload)
-    setResultData(null)
-    setSimulationState('ready')
-    setSelectedAnswer(null)
-    setConfidence(1)
-    setReasoning('')
-    setTimeRemaining(120)
-    setStartedAt(0)
-    setIsLoading(false)
-    setIsRefreshing(false)
   }, [locale, t.common.error, trainingData])
 
   useEffect(() => {
@@ -475,13 +481,13 @@ export default function TrainingPageClient({
                           </div>
 
                           <div className="flex flex-col gap-3 sm:flex-row">
-                            <Button className="sm:flex-1" onClick={handleStartSimulation}>
+                            <Button className="sm:flex-1" onClick={handleStartSimulation} disabled={isRefreshing}>
                               {pageCopy.start}
                               <ArrowRight className="ltr:ml-2 rtl:mr-2 h-4 w-4" />
                             </Button>
-                            <Button variant="outline" onClick={() => void handleNextSimulation()}>
+                            <Button variant="outline" onClick={() => void handleNextSimulation()} disabled={isRefreshing}>
                               <SkipForward className="ltr:mr-2 rtl:ml-2 h-4 w-4" />
-                              {pageCopy.swap}
+                              {isRefreshing ? t.common.loading : pageCopy.swap}
                             </Button>
                           </div>
                         </div>
@@ -564,13 +570,13 @@ export default function TrainingPageClient({
                         </div>
 
                         <div className="flex flex-col gap-3 sm:flex-row">
-                          <Button onClick={handleSubmit} disabled={!selectedAnswer || isSubmitting} className="sm:flex-1">
+                          <Button onClick={handleSubmit} disabled={!selectedAnswer || isSubmitting || isRefreshing} className="sm:flex-1">
                             <Send className="ltr:mr-2 rtl:ml-2 h-4 w-4" />
                             {isSubmitting ? t.common.loading : t.training.simulation.submit}
                           </Button>
-                          <Button variant="outline" onClick={() => void handleNextSimulation()}>
+                          <Button variant="outline" onClick={() => void handleNextSimulation()} disabled={isRefreshing}>
                             <SkipForward className="ltr:mr-2 rtl:ml-2 h-4 w-4" />
-                            {pageCopy.swap}
+                            {isRefreshing ? t.common.loading : pageCopy.swap}
                           </Button>
                         </div>
                       </div>
@@ -607,8 +613,8 @@ export default function TrainingPageClient({
                           <Sparkles className="ltr:mr-2 rtl:ml-2 h-4 w-4" />
                           {pageCopy.explanation}
                         </Button>
-                        <Button variant="outline" onClick={() => void handleNextSimulation()}>
-                          {pageCopy.nextSimulation}
+                        <Button variant="outline" onClick={() => void handleNextSimulation()} disabled={isRefreshing}>
+                          {isRefreshing ? t.common.loading : pageCopy.nextSimulation}
                           <ChevronRight className="ltr:ml-2 rtl:mr-2 h-4 w-4" />
                         </Button>
                       </div>
@@ -683,8 +689,8 @@ export default function TrainingPageClient({
                         <p className="mt-1 text-sm text-muted-foreground">{resultData.recommendation.reason}</p>
                       </div>
 
-                      <Button onClick={() => void handleNextSimulation()} className="w-full">
-                        {pageCopy.nextSimulation}
+                      <Button onClick={() => void handleNextSimulation()} className="w-full" disabled={isRefreshing}>
+                        {isRefreshing ? t.common.loading : pageCopy.nextSimulation}
                         <ArrowRight className="ltr:ml-2 rtl:mr-2 h-4 w-4" />
                       </Button>
                     </div>
