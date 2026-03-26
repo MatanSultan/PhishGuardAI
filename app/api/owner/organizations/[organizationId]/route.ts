@@ -30,14 +30,18 @@ export async function PATCH(
     const { user } = await getAuthenticatedRequestContext()
     const params = await context.params
 
-    requireOwnerUser(user)
+    const { access } = await requireOwnerUser(user)
 
     const service = getServiceSupabaseClient()
-    if (user?.email) {
-      await service.from('platform_owners').upsert({ email: user.email.toLowerCase() })
-    }
-
     const body = updateSchema.parse(await request.json())
+
+    console.info('[owner-update] request', {
+      organizationId: params.organizationId,
+      email: access.normalizedEmail,
+      viaEnv: access.viaEnv,
+      viaDatabase: access.viaDatabase,
+      payloadKeys: Object.keys(body),
+    })
 
     const { data, error } = await service.rpc('owner_update_org_plan', {
       org_id: params.organizationId,
@@ -56,12 +60,22 @@ export async function PATCH(
       throw error
     }
 
+    console.info('[owner-update] success', {
+      organizationId: params.organizationId,
+      email: access.normalizedEmail,
+      updated: Array.isArray(data) ? data.length : Number(Boolean(data)),
+    })
+
     return NextResponse.json({
       organization: Array.isArray(data) ? data[0] : data,
     })
   } catch (error) {
     if (error instanceof AuthorizationError) {
       return jsonError(error.message, error.statusCode)
+    }
+
+    if (error instanceof z.ZodError) {
+      return jsonError(error.issues[0]?.message ?? 'Invalid organization update payload.', 400, error)
     }
 
     const message = error instanceof Error ? error.message : 'Unable to update organization.'

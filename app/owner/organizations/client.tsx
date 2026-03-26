@@ -291,10 +291,29 @@ export default function OwnerOrganizationsClient() {
     return <OwnerConsoleSkeleton />
   }
 
+  if (feedback?.kind === 'error' && !organizations.length) {
+    return (
+      <div className="container mx-auto space-y-6 px-4 py-8 lg:px-8">
+        <Card className="rounded-3xl">
+          <CardHeader>
+            <CardTitle>{t.title}</CardTitle>
+            <CardDescription>{feedback.message}</CardDescription>
+          </CardHeader>
+          <CardContent className="flex flex-wrap gap-3">
+            <Button onClick={() => void load()}>
+              <RefreshCw className="ltr:mr-2 rtl:ml-2 h-4 w-4" />
+              {t.refresh}
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
   if (!organizations.length) {
     return (
       <div className="container mx-auto space-y-6 px-4 py-8 lg:px-8">
-        <PanelEmptyState title={t.organizations.title} description={t.overview.recentEmpty} />
+        <PanelEmptyState title={t.organizations.title} description={t.organizations.empty} />
       </div>
     )
   }
