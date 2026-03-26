@@ -4,6 +4,7 @@ import { getAuthenticatedRequestContext, jsonError } from '@/lib/api'
 import { AuthorizationError } from '@/lib/permissions'
 import { requireOwnerUser } from '@/lib/owner/auth'
 import { getOwnerOrganizationsPayload } from '@/lib/owner/service'
+import { getSupabaseEnvDiagnostics } from '@/lib/supabase/diagnostics'
 import { getServiceSupabaseClient } from '@/lib/supabase/service'
 
 export const runtime = 'nodejs'
@@ -20,12 +21,16 @@ export async function GET() {
 
     const service = getServiceSupabaseClient()
     const ownerEmail = access.normalizedEmail
+    const diagnostics = getSupabaseEnvDiagnostics()
 
     console.info('[owner-list] route hit', {
       email: ownerEmail,
       viaEnv: access.viaEnv,
       viaDatabase: access.viaDatabase,
       hasServiceKey: access.hasServiceRole,
+      supabaseProjectRef: diagnostics.urlProjectRef,
+      serviceKeyRole: diagnostics.serviceKeyRole,
+      nodeEnv: diagnostics.nodeEnv,
     })
 
     const payload = await getOwnerOrganizationsPayload(service)

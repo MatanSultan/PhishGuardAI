@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server'
 import { getAuthenticatedRequestContext, jsonError } from '@/lib/api'
 import { getAdminOverviewPayload } from '@/lib/admin/service'
 import { AuthorizationError } from '@/lib/permissions'
+import { getSupabaseEnvDiagnostics } from '@/lib/supabase/diagnostics'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -14,10 +15,17 @@ function isMissingAuthSession(error: unknown) {
 export async function GET() {
   try {
     const { supabase, user } = await getAuthenticatedRequestContext()
+    const diagnostics = getSupabaseEnvDiagnostics()
 
     if (!user) {
       return jsonError('Unauthorized', 401)
     }
+
+    console.info('[admin-overview] route hit', {
+      supabaseProjectRef: diagnostics.urlProjectRef,
+      anonKeyRole: diagnostics.anonKeyRole,
+      nodeEnv: diagnostics.nodeEnv,
+    })
 
     const payload = await getAdminOverviewPayload(supabase, user.id)
 

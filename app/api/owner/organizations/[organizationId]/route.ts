@@ -5,6 +5,7 @@ import { getAuthenticatedRequestContext, jsonError } from '@/lib/api'
 import { AuthorizationError } from '@/lib/permissions'
 import { requireOwnerUser } from '@/lib/owner/auth'
 import { PLAN_STATUSES, PLAN_TYPES } from '@/lib/constants'
+import { getSupabaseEnvDiagnostics } from '@/lib/supabase/diagnostics'
 import { getServiceSupabaseClient } from '@/lib/supabase/service'
 
 const updateSchema = z.object({
@@ -38,6 +39,7 @@ export async function PATCH(
 
     const service = getServiceSupabaseClient()
     const body = updateSchema.parse(await request.json())
+    const diagnostics = getSupabaseEnvDiagnostics()
 
     console.info('[owner-update] request', {
       organizationId: params.organizationId,
@@ -45,6 +47,9 @@ export async function PATCH(
       viaEnv: access.viaEnv,
       viaDatabase: access.viaDatabase,
       payloadKeys: Object.keys(body),
+      supabaseProjectRef: diagnostics.urlProjectRef,
+      serviceKeyRole: diagnostics.serviceKeyRole,
+      nodeEnv: diagnostics.nodeEnv,
     })
 
     const { data, error } = await service.rpc('owner_update_org_plan', {
