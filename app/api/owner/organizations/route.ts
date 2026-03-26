@@ -10,13 +10,13 @@ export async function GET() {
 
     requireOwnerUser(user)
 
-    const { data: enriched, error } = await supabase.rpc('owner_list_organizations')
+    const { data: enriched, error } = await (supabase.rpc as any)('owner_list_organizations')
 
     if (error) {
       throw error
     }
 
-    const orgs = enriched ?? []
+    const orgs = (enriched ?? []) as any[]
 
     const stats = {
       total: orgs.length,

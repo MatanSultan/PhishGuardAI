@@ -33,7 +33,7 @@ export async function PATCH(
 
     const body = updateSchema.parse(await request.json())
 
-    const { data, error } = await supabase.rpc('owner_update_org_plan', {
+    const { data, error } = await (supabase.rpc as any)('owner_update_org_plan', {
       org_id: params.organizationId,
       next_plan_status: body.plan_status ?? null,
       next_plan_type: body.plan_type ?? null,
