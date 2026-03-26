@@ -125,6 +125,16 @@ export async function syncOwnerRecord(email: string | null | undefined) {
   }
 }
 
+function shouldSyncOwnerRecord(access: OwnerAccessDetails) {
+  return Boolean(
+    access.allowed &&
+      access.hasServiceRole &&
+      access.normalizedEmail &&
+      access.viaEnv &&
+      !access.viaDatabase,
+  )
+}
+
 export async function isOwnerUser(email: string | null | undefined) {
   const access = await getOwnerAccessDetails(email)
   return access.allowed
@@ -141,7 +151,9 @@ export async function requireOwnerUser(user: User | null | undefined) {
     throw new AuthorizationError('Owner access is required.', 403)
   }
 
-  await syncOwnerRecord(access.normalizedEmail)
+  if (shouldSyncOwnerRecord(access)) {
+    await syncOwnerRecord(access.normalizedEmail)
+  }
 
   return {
     user,

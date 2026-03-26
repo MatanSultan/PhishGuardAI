@@ -26,7 +26,9 @@ export default async function OwnerLayout({
     redirect('/dashboard')
   }
 
-  await syncOwnerRecord(user.email)
+  if (ownerAccess.viaEnv && !ownerAccess.viaDatabase) {
+    await syncOwnerRecord(user.email)
+  }
 
   return (
     <div className="flex min-h-screen flex-col">

@@ -11,7 +11,7 @@ export default async function AdminLayout({
   const user = await requireSessionUser('/admin')
   const context = await getServerOrganizationContext(user.id)
 
-  if (!context || context.membership.role !== 'admin') {
+  if (!context || context.membership.role !== 'admin' || context.membership.status !== 'active') {
     redirect('/dashboard')
   }
 
