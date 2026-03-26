@@ -1,13 +1,17 @@
-'use client'
+﻿'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { ShieldCheck, Ban, RefreshCw, Users, Filter } from 'lucide-react'
+import { ShieldCheck, Ban, RefreshCw, Users, Filter, Target } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Input } from '@/components/ui/input'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Textarea } from '@/components/ui/textarea'
+import { useLocale } from '@/lib/locale-context'
+import { getDirection } from '@/lib/i18n'
 
 type OwnerOrg = {
   id: string
@@ -24,6 +28,13 @@ type OwnerOrg = {
   active_members: number
   total_members: number
   limit_reached?: boolean
+  attempts_7d?: number
+  attempts_30d?: number
+  last_activity?: string | null
+  pending_invites?: number
+  likely_to_convert?: boolean
+  follow_up_status?: string
+  owner_note?: string | null
 }
 
 type OrgStats = {
@@ -33,34 +44,194 @@ type OrgStats = {
   paid: number
   blocked: number
   hittingLimits: number
+  likelyToConvert: number
+  activeLast7: number
   recent: string[]
 }
 
-type FilterKey = 'all' | 'free' | 'trial' | 'paid' | 'blocked' | 'limit'
+type FilterKey = 'all' | 'free' | 'trial' | 'paid' | 'blocked' | 'limit' | 'opportunity'
 
-function formatPlanStatus(status: string) {
-  switch (status) {
-    case 'active_paid':
-      return 'Paid'
-    case 'trial':
-      return 'Trial'
-    case 'past_due':
-      return 'Past due'
-    case 'blocked':
-      return 'Blocked'
-    case 'free':
-    default:
-      return 'Free'
-  }
-}
+const copy = {
+  he: {
+    title: 'קונסולת בעלים',
+    subtitle: 'בקרה מהירה על ארגונים, תוכניות ומגבלות.',
+    organizations: 'ארגונים',
+    orgSubtitle: 'שדרוג, הסרת חסימה או הרחבת מגבלה בלחיצה.',
+    filters: 'מסננים',
+    filterLabels: {
+      all: 'הכל',
+      free: 'חינמי',
+      trial: 'ניסיון',
+      paid: 'בתשלום',
+      blocked: 'חסומים',
+      limit: 'הגיעו למגבלה',
+      opportunity: 'כדאי לפנות',
+    },
+    stats: {
+      total: 'סה״כ ארגונים',
+      free: 'חינמי',
+      trial: 'ניסיון',
+      paid: 'בתשלום',
+      blocked: 'חסומים',
+      limit: 'הגיעו למגבלה',
+      opportunity: 'כדאי לשדרג',
+      active: 'פעילים 7 ימים',
+    },
+    table: {
+      name: 'שם',
+      segment: 'סגמנט',
+      plan: 'מסלול',
+      members: 'חברים',
+      activity: 'פעילות',
+      status: 'סטטוס',
+      actions: 'פעולות',
+      loading: 'טוען...',
+      empty: 'אין ארגונים תחת המסנן הנוכחי.',
+    },
+    planStatus: {
+      free: 'חינמי',
+      trial: 'ניסיון',
+      active_paid: 'בתשלום',
+      past_due: 'באיחור',
+      blocked: 'חסום',
+    },
+    segments: {
+      nursing_home: 'בית אבות',
+      education: 'חינוך',
+      nonprofit: 'עמותה',
+      municipality: 'עירייה',
+      smb: 'עסק קטן',
+      other: 'אחר',
+    },
+    followUp: {
+      label: 'סטטוס פנייה',
+      options: {
+        new: 'חדש',
+        contacted: 'בוצעה פנייה',
+        offered_discount: 'הוצעה הנחה',
+        upgraded: 'שודרג',
+      },
+      notePlaceholder: 'הערת מעקב פנימית',
+    },
+    badges: {
+      atLimit: 'הגיע למגבלה',
+      blocked: 'חסום',
+      likely: 'כדאי לפנות',
+    },
+    actions: {
+      refresh: 'רענון',
+      trial: 'התחלת ניסיון',
+      paid: 'סימון בתשלום',
+      free: 'החזרה לחינם',
+      block: 'חסימה',
+      unblock: 'ביטול חסימה',
+      saveNote: 'שמירת הערה',
+      limitLabel: 'מקסימום משתמשים',
+    },
+    activity: {
+      last: 'פעילות אחרונה',
+      attempts7: 'נסיונות 7 ימים',
+      attempts30: 'נסיונות 30 ימים',
+      invites: 'הזמנות ממתינות',
+    },
+  },
+  en: {
+    title: 'Owner console',
+    subtitle: 'Quick control of org plans and limits.',
+    organizations: 'Organizations',
+    orgSubtitle: 'Upgrade, unblock, or extend limits manually.',
+    filters: 'Filters',
+    filterLabels: {
+      all: 'All',
+      free: 'Free',
+      trial: 'Trial',
+      paid: 'Paid',
+      blocked: 'Blocked',
+      limit: 'At limit',
+      opportunity: 'Likely to convert',
+    },
+    stats: {
+      total: 'Total orgs',
+      free: 'Free',
+      trial: 'Trial',
+      paid: 'Paid',
+      blocked: 'Blocked',
+      limit: 'At limit',
+      opportunity: 'Likely to upgrade',
+      active: 'Active (7d)',
+    },
+    table: {
+      name: 'Name',
+      segment: 'Segment',
+      plan: 'Plan',
+      members: 'Members',
+      activity: 'Activity',
+      status: 'Status',
+      actions: 'Actions',
+      loading: 'Loading...',
+      empty: 'No organizations match this filter.',
+    },
+    planStatus: {
+      free: 'Free',
+      trial: 'Trial',
+      active_paid: 'Paid',
+      past_due: 'Past due',
+      blocked: 'Blocked',
+    },
+    segments: {
+      nursing_home: 'Nursing home',
+      education: 'Education',
+      nonprofit: 'Nonprofit',
+      municipality: 'Municipality',
+      smb: 'SMB',
+      other: 'Other',
+    },
+    followUp: {
+      label: 'Follow-up',
+      options: {
+        new: 'New',
+        contacted: 'Contacted',
+        offered_discount: 'Offered discount',
+        upgraded: 'Upgraded',
+      },
+      notePlaceholder: 'Internal follow-up note',
+    },
+    badges: {
+      atLimit: 'At limit',
+      blocked: 'Blocked',
+      likely: 'Opportunity',
+    },
+    actions: {
+      refresh: 'Refresh',
+      trial: 'Start trial',
+      paid: 'Mark paid',
+      free: 'Set free',
+      block: 'Block',
+      unblock: 'Unblock',
+      saveNote: 'Save note',
+      limitLabel: 'Max members',
+    },
+    activity: {
+      last: 'Last activity',
+      attempts7: 'Attempts 7d',
+      attempts30: 'Attempts 30d',
+      invites: 'Pending invites',
+    },
+  },
+} as const
 
 export default function OwnerOrganizationsClient() {
+  const { locale } = useLocale()
+  const t = copy[locale]
+  const isRtl = getDirection(locale) === 'rtl'
+
   const [organizations, setOrganizations] = useState<OwnerOrg[]>([])
   const [stats, setStats] = useState<OrgStats | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [filter, setFilter] = useState<FilterKey>('all')
   const [savingId, setSavingId] = useState<string | null>(null)
+  const [noteDrafts, setNoteDrafts] = useState<Record<string, string>>({})
 
   const load = async () => {
     setLoading(true)
@@ -101,6 +272,8 @@ export default function OwnerOrganizationsClient() {
         return organizations.filter((org) => org.plan_status === 'blocked' || org.access_blocked)
       case 'limit':
         return organizations.filter((org) => org.limit_reached)
+      case 'opportunity':
+        return organizations.filter((org) => org.likely_to_convert)
       case 'all':
       default:
         return organizations
@@ -110,7 +283,7 @@ export default function OwnerOrganizationsClient() {
   const patchOrg = async (id: string, body: Record<string, unknown>) => {
     setSavingId(id)
     try {
-      const response = await fetch(`/api/owner/organizations/${id}`, {
+      const response = await fetch(/api/owner/organizations/, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -149,7 +322,7 @@ export default function OwnerOrganizationsClient() {
       plan_type: org.plan_type === 'free' ? 'growth' : org.plan_type,
       access_blocked: false,
       trial_ends_at: trialEnds,
-      max_members_allowed: Math.max(org.max_members_allowed ?? 1, org.active_members + 5),
+      max_members_allowed: Math.max(org.max_members_allowed ?? 1, (org.active_members ?? 0) + 5),
     })
   }
 
@@ -158,7 +331,7 @@ export default function OwnerOrganizationsClient() {
       plan_status: 'active_paid',
       plan_type: org.plan_type === 'free' ? 'growth' : org.plan_type,
       access_blocked: false,
-      max_members_allowed: Math.max(org.max_members_allowed ?? 1, org.active_members + 25),
+      max_members_allowed: Math.max(org.max_members_allowed ?? 1, (org.active_members ?? 0) + 25),
     })
   }
 
@@ -188,59 +361,80 @@ export default function OwnerOrganizationsClient() {
     })
   }
 
+  const updateFollowUp = (org: OwnerOrg, status: string) => {
+    void patchOrg(org.id, {
+      follow_up_status: status,
+    })
+  }
+
+  const saveNote = (org: OwnerOrg) => {
+    const note = noteDrafts[org.id] ?? org.owner_note ?? ''
+    void patchOrg(org.id, { owner_note: note })
+  }
+
+  const formatPlanStatus = (status: string) => {
+    return t.planStatus[status as keyof typeof t.planStatus] ?? t.planStatus.free
+  }
+
+  const formatSegment = (segment: string | null) => {
+    if (!segment) return t.segments.other
+    return t.segments[segment as keyof typeof t.segments] ?? t.segments.other
+  }
+
+  const formatDate = (value?: string | null) => {
+    if (!value) return '—'
+    return new Date(value).toLocaleDateString(locale === 'he' ? 'he-IL' : 'en-US')
+  }
+
   return (
     <div className="container mx-auto space-y-6 px-4 py-8 lg:px-8">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <p className="text-sm text-muted-foreground">Owner console</p>
-          <h1 className="text-2xl font-bold">Organizations & access</h1>
+          <p className="text-sm text-muted-foreground">{t.title}</p>
+          <h1 className="text-2xl font-bold">{t.subtitle}</h1>
         </div>
         <Button variant="outline" onClick={() => void load()} disabled={loading}>
           <RefreshCw className="ltr:mr-2 rtl:ml-2 h-4 w-4" />
-          Refresh
+          {t.actions.refresh}
         </Button>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>Business overview</CardTitle>
-          <CardDescription>Quick view of plans and limits across all orgs.</CardDescription>
+          <CardTitle>{t.title}</CardTitle>
+          <CardDescription>{t.subtitle}</CardDescription>
         </CardHeader>
-        <CardContent className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <StatTile label="Total orgs" value={stats?.total ?? 0} />
-          <StatTile label="Free" value={stats?.free ?? 0} />
-          <StatTile label="Trial" value={stats?.trial ?? 0} />
-          <StatTile label="Paid" value={stats?.paid ?? 0} />
-          <StatTile label="Blocked" value={stats?.blocked ?? 0} />
-          <StatTile label="At limit" value={stats?.hittingLimits ?? 0} />
+        <CardContent className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <StatTile label={t.stats.total} value={stats?.total ?? 0} />
+          <StatTile label={t.stats.free} value={stats?.free ?? 0} />
+          <StatTile label={t.stats.trial} value={stats?.trial ?? 0} />
+          <StatTile label={t.stats.paid} value={stats?.paid ?? 0} />
+          <StatTile label={t.stats.blocked} value={stats?.blocked ?? 0} />
+          <StatTile label={t.stats.limit} value={stats?.hittingLimits ?? 0} />
+          <StatTile label={t.stats.opportunity} value={stats?.likelyToConvert ?? 0} />
+          <StatTile label={t.stats.active} value={stats?.activeLast7 ?? 0} />
         </CardContent>
       </Card>
 
       <Card>
         <CardHeader>
-          <CardTitle>Organizations</CardTitle>
-          <CardDescription>Upgrade, unblock, or extend limits manually.</CardDescription>
+          <CardTitle>{t.organizations}</CardTitle>
+          <CardDescription>{t.orgSubtitle}</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="mb-3 flex flex-wrap items-center gap-2">
             <Badge variant="secondary" className="flex items-center gap-1">
               <Filter className="h-3 w-3" />
-              Filters
+              {t.filters}
             </Badge>
-            {(['all', 'free', 'trial', 'paid', 'blocked', 'limit'] as FilterKey[]).map((key) => (
+            {(['all', 'free', 'trial', 'paid', 'blocked', 'limit', 'opportunity'] as FilterKey[]).map((key) => (
               <Button
                 key={key}
                 variant={filter === key ? 'default' : 'outline'}
                 size="sm"
                 onClick={() => setFilter(key)}
               >
-                {key === 'all'
-                  ? 'All'
-                  : key === 'paid'
-                    ? 'Paid'
-                    : key === 'limit'
-                      ? 'At limit'
-                      : key.charAt(0).toUpperCase() + key.slice(1)}
+                {t.filterLabels[key]}
               </Button>
             ))}
           </div>
@@ -255,26 +449,26 @@ export default function OwnerOrganizationsClient() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Segment</TableHead>
-                  <TableHead>Plan</TableHead>
-                  <TableHead>Members</TableHead>
-                  <TableHead>Trial</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                  <TableHead>{t.table.name}</TableHead>
+                  <TableHead>{t.table.segment}</TableHead>
+                  <TableHead>{t.table.plan}</TableHead>
+                  <TableHead>{t.table.members}</TableHead>
+                  <TableHead>{t.table.activity}</TableHead>
+                  <TableHead>{t.table.status}</TableHead>
+                  <TableHead className="text-right">{t.table.actions}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {loading ? (
                   <TableRow>
                     <TableCell colSpan={7} className="text-center text-sm text-muted-foreground">
-                      Loading...
+                      {t.table.loading}
                     </TableCell>
                   </TableRow>
                 ) : filtered.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={7} className="text-center text-sm text-muted-foreground">
-                      No organizations match this filter.
+                      {t.table.empty}
                     </TableCell>
                   </TableRow>
                 ) : (
@@ -284,18 +478,22 @@ export default function OwnerOrganizationsClient() {
                         <div className="font-semibold">{org.name}</div>
                         <div className="text-xs text-muted-foreground">{org.slug}</div>
                       </TableCell>
-                      <TableCell className="text-sm capitalize">
-                        {org.organization_type ?? '—'}
-                      </TableCell>
-                      <TableCell className="space-y-1">
-                        <div className="flex items-center gap-2">
+                      <TableCell className="text-sm capitalize">{formatSegment(org.organization_type)}</TableCell>
+                      <TableCell className="space-y-2 text-sm">
+                        <div className="flex flex-wrap items-center gap-2">
                           <Badge variant={org.plan_status === 'active_paid' ? 'default' : 'outline'}>
                             {formatPlanStatus(org.plan_status)}
                           </Badge>
-                          {org.access_blocked ? <Badge variant="destructive">Blocked</Badge> : null}
+                          {org.access_blocked ? <Badge variant="destructive">{t.badges.blocked}</Badge> : null}
+                          {org.likely_to_convert ? (
+                            <Badge variant="secondary" className="flex items-center gap-1">
+                              <Target className="h-3 w-3" />
+                              {t.badges.likely}
+                            </Badge>
+                          ) : null}
                         </div>
                         <div className="text-xs text-muted-foreground">
-                          Type: {org.plan_type ?? 'free'} • Limit {org.max_members_allowed ?? 1}
+                          {org.plan_type ?? 'free'} • {t.actions.limitLabel} {org.max_members_allowed ?? 1}
                         </div>
                         <div className="flex items-center gap-2 text-xs text-muted-foreground">
                           <Input
@@ -305,24 +503,68 @@ export default function OwnerOrganizationsClient() {
                             className="h-8 w-24"
                             onBlur={(event) => updateLimit(org, Number(event.target.value))}
                           />
-                          <span>max members</span>
+                          <span>{t.actions.limitLabel}</span>
                         </div>
                       </TableCell>
                       <TableCell className="text-sm">
                         <div className="flex items-center gap-2">
                           <Users className="h-4 w-4 text-muted-foreground" />
                           {org.active_members}/{org.max_members_allowed ?? 1}{' '}
-                          {org.limit_reached ? <Badge variant="destructive">At limit</Badge> : null}
+                          {org.limit_reached ? <Badge variant="destructive">{t.badges.atLimit}</Badge> : null}
                         </div>
                         <div className="text-xs text-muted-foreground">
-                          Total: {org.total_members ?? org.active_members}
+                          {locale === 'he' ? 'סה״כ: ' : 'Total: '}{org.total_members ?? org.active_members}
                         </div>
                       </TableCell>
-                      <TableCell className="text-sm">
-                        {org.trial_ends_at ? new Date(org.trial_ends_at).toLocaleDateString() : '—'}
+                      <TableCell className="text-sm space-y-1">
+                        <div className="text-xs text-muted-foreground">
+                          {t.activity.last}: {formatDate(org.last_activity)}
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          {t.activity.attempts7}: {org.attempts_7d ?? 0}
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          {t.activity.attempts30}: {org.attempts_30d ?? 0}
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          {t.activity.invites}: {org.pending_invites ?? 0}
+                        </div>
                       </TableCell>
-                      <TableCell className="text-sm">
-                        {org.access_blocked ? 'Blocked' : 'Active'}
+                      <TableCell className="text-sm space-y-2">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <Badge variant="outline">
+                            {t.followUp.options[org.follow_up_status as keyof typeof t.followUp.options] ??
+                              t.followUp.options.new}
+                          </Badge>
+                          {org.access_blocked ? <Badge variant="destructive">{t.badges.blocked}</Badge> : null}
+                        </div>
+                        <Select
+                          defaultValue={org.follow_up_status ?? 'new'}
+                          onValueChange={(value) => updateFollowUp(org, value)}
+                          disabled={savingId === org.id}
+                        >
+                          <SelectTrigger className="h-9">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent align={isRtl ? 'end' : 'start'}>
+                            {Object.entries(t.followUp.options).map(([key, label]) => (
+                              <SelectItem key={key} value={key}>
+                                {label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <div className="space-y-1">
+                          <Textarea
+                            defaultValue={org.owner_note ?? ''}
+                            onChange={(event) =>
+                              setNoteDrafts((current) => ({ ...current, [org.id]: event.target.value }))
+                            }
+                            onBlur={() => saveNote(org)}
+                            placeholder={t.followUp.notePlaceholder}
+                            className="min-h-[70px]"
+                          />
+                        </div>
                       </TableCell>
                       <TableCell className="space-y-2 text-right">
                         <div className="flex flex-wrap justify-end gap-2">
@@ -332,7 +574,7 @@ export default function OwnerOrganizationsClient() {
                             onClick={() => startTrial(org)}
                             disabled={savingId === org.id}
                           >
-                            Trial
+                            {t.actions.trial}
                           </Button>
                           <Button
                             size="sm"
@@ -340,7 +582,7 @@ export default function OwnerOrganizationsClient() {
                             onClick={() => markPaid(org)}
                             disabled={savingId === org.id}
                           >
-                            Mark paid
+                            {t.actions.paid}
                           </Button>
                           <Button
                             size="sm"
@@ -348,27 +590,27 @@ export default function OwnerOrganizationsClient() {
                             onClick={() => markFree(org)}
                             disabled={savingId === org.id}
                           >
-                            Free
+                            {t.actions.free}
                           </Button>
                           <Button
                             size="sm"
-                        variant={org.access_blocked ? 'secondary' : 'destructive'}
-                        onClick={() => toggleBlock(org)}
-                        disabled={savingId === org.id}
-                      >
-                        {org.access_blocked ? (
-                          <ShieldCheck className="ltr:mr-1 rtl:ml-1 h-4 w-4" />
-                        ) : (
-                          <Ban className="ltr:mr-1 rtl:ml-1 h-4 w-4" />
-                        )}
-                        {org.access_blocked ? 'Unblock' : 'Block'}
-                      </Button>
+                            variant={org.access_blocked ? 'secondary' : 'destructive'}
+                            onClick={() => toggleBlock(org)}
+                            disabled={savingId === org.id}
+                          >
+                            {org.access_blocked ? (
+                              <ShieldCheck className="ltr:mr-1 rtl:ml-1 h-4 w-4" />
+                            ) : (
+                              <Ban className="ltr:mr-1 rtl:ml-1 h-4 w-4" />
+                            )}
+                            {org.access_blocked ? t.actions.unblock : t.actions.block}
+                          </Button>
                         </div>
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
             </Table>
           </div>
         </CardContent>

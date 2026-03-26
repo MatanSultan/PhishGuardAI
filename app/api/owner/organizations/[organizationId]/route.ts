@@ -4,7 +4,6 @@ import { z } from 'zod'
 import { getAuthenticatedRequestContext, jsonError } from '@/lib/api'
 import { AuthorizationError } from '@/lib/permissions'
 import { requireOwnerUser } from '@/lib/owner/auth'
-import { getServiceSupabaseClient } from '@/lib/supabase/service'
 import { PLAN_STATUSES, PLAN_TYPES } from '@/lib/constants'
 
 const updateSchema = z.object({
@@ -14,6 +13,8 @@ const updateSchema = z.object({
   trial_ends_at: z.string().datetime().optional().or(z.literal(null)),
   access_blocked: z.boolean().optional(),
   billing_notes: z.string().max(500).optional(),
+  follow_up_status: z.enum(['new', 'contacted', 'offered_discount', 'upgraded']).optional(),
+  owner_note: z.string().max(1000).optional(),
 })
 
 export async function PATCH(
@@ -25,44 +26,32 @@ export async function PATCH(
   },
 ) {
   try {
-    const { user } = await getAuthenticatedRequestContext()
+    const { user, supabase } = await getAuthenticatedRequestContext()
     const params = await context.params
 
     requireOwnerUser(user)
 
-    const service = getServiceSupabaseClient()
     const body = updateSchema.parse(await request.json())
 
-    const { data, error } = await service
-      .from('organizations')
-      .update(body)
-      .eq('id', params.organizationId)
-      .select(
-        'id, name, slug, organization_type, plan_type, plan_status, max_members_allowed, trial_ends_at, access_blocked, billing_notes, created_at',
-      )
-      .single()
+    const { data, error } = await supabase.rpc('owner_update_org_plan', {
+      org_id: params.organizationId,
+      next_plan_status: body.plan_status ?? null,
+      next_plan_type: body.plan_type ?? null,
+      next_max_members: body.max_members_allowed ?? null,
+      next_trial_ends_at: body.trial_ends_at ?? null,
+      next_access_blocked: body.access_blocked ?? null,
+      next_billing_notes: body.billing_notes ?? null,
+      next_follow_up_status: body.follow_up_status ?? null,
+      next_owner_note: body.owner_note ?? null,
+      actor_id: user?.id ?? null,
+    })
 
     if (error) {
       throw error
     }
 
-    const { count: activeMembers } = await service
-      .from('organization_members')
-      .select('id', { count: 'exact', head: true })
-      .eq('organization_id', params.organizationId)
-      .eq('status', 'active')
-
-    const { count: totalMembers } = await service
-      .from('organization_members')
-      .select('id', { count: 'exact', head: true })
-      .eq('organization_id', params.organizationId)
-
     return NextResponse.json({
-      organization: {
-        ...data,
-        active_members: activeMembers ?? 0,
-        total_members: totalMembers ?? 0,
-      },
+      organization: Array.isArray(data) ? data[0] : data,
     })
   } catch (error) {
     if (error instanceof AuthorizationError) {
