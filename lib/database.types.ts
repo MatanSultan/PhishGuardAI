@@ -190,6 +190,43 @@ export interface Database {
         }
         Relationships: NoRelationships
       }
+      owner_org_notes: {
+        Row: {
+          follow_up_status: 'new' | 'contacted' | 'offered_discount' | 'upgraded'
+          note: string | null
+          organization_id: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          follow_up_status?: 'new' | 'contacted' | 'offered_discount' | 'upgraded'
+          note?: string | null
+          organization_id: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          follow_up_status?: 'new' | 'contacted' | 'offered_discount' | 'upgraded'
+          note?: string | null
+          organization_id?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'owner_org_notes_organization_id_fkey'
+            columns: ['organization_id']
+            referencedRelation: 'organizations'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'owner_org_notes_updated_by_fkey'
+            columns: ['updated_by']
+            referencedRelation: 'profiles'
+            referencedColumns: ['id']
+          },
+        ]
+      }
       profiles: {
         Row: {
           created_at: string
@@ -507,6 +544,69 @@ export interface Database {
           target_member_id: string
         }
         Returns: Json
+      }
+      owner_list_organizations: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          id: string
+          name: string
+          slug: string
+          organization_type: string | null
+          plan_type: string
+          plan_status: string
+          max_members_allowed: number
+          trial_ends_at: string | null
+          access_blocked: boolean
+          billing_notes: string | null
+          created_at: string
+          total_members: number
+          active_members: number
+          attempts_7d: number
+          attempts_30d: number
+          last_activity: string | null
+          pending_invites: number
+          limit_reached: boolean
+          likely_to_convert: boolean
+          follow_up_status: string
+          owner_note: string | null
+        }[]
+      }
+      owner_update_org_plan: {
+        Args: {
+          org_id: string
+          next_plan_status?: string | null
+          next_plan_type?: string | null
+          next_max_members?: number | null
+          next_trial_ends_at?: string | null
+          next_access_blocked?: boolean | null
+          next_billing_notes?: string | null
+          next_follow_up_status?: string | null
+          next_owner_note?: string | null
+          actor_id?: string | null
+        }
+        Returns: {
+          id: string
+          name: string
+          slug: string
+          organization_type: string | null
+          plan_type: string
+          plan_status: string
+          max_members_allowed: number
+          trial_ends_at: string | null
+          access_blocked: boolean
+          billing_notes: string | null
+          created_at: string
+          total_members: number
+          active_members: number
+          attempts_7d: number
+          attempts_30d: number
+          last_activity: string | null
+          pending_invites: number
+          limit_reached: boolean
+          likely_to_convert: boolean
+          follow_up_status: string
+          owner_note: string | null
+        }[]
       }
     }
     Enums: Record<string, never>

@@ -39,7 +39,6 @@ export async function PATCH(
 
     const body = updateSchema.parse(await request.json())
 
-    // @ts-expect-error custom RPC not in generated types
     const { data, error } = await service.rpc('owner_update_org_plan', {
       org_id: params.organizationId,
       next_plan_status: body.plan_status ?? null,
