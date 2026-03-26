@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
   Activity,
   AlertTriangle,
@@ -67,6 +67,7 @@ import { Label } from '@/components/ui/label'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import type { OrganizationMemberRecord } from '@/lib/organizations/service'
+import { cn } from '@/lib/utils'
 
 type DashboardPayload = Awaited<ReturnType<typeof getOrganizationDashboardData>>
 
@@ -94,6 +95,8 @@ interface SupportEmployeePreview {
   accuracyRate: number
   totalAttempts: number
 }
+
+type AdminSectionKey = 'overview' | 'insights' | 'team' | 'invites' | 'activity'
 
 function getAttentionFlagCopy(
   flag: CompanyAttentionFlag,
@@ -265,6 +268,9 @@ export default function AdminPage() {
   const [memberToRemove, setMemberToRemove] = useState<OrganizationMemberRecord | null>(null)
   const [refreshKey, setRefreshKey] = useState(0)
   const [nowTs] = useState(() => Date.now())
+  const [activeSection, setActiveSection] = useState<AdminSectionKey>('overview')
+  const [memberSearch, setMemberSearch] = useState('')
+  const [memberStatusFilter, setMemberStatusFilter] = useState<'all' | 'active' | 'suspended'>('all')
 
   useEffect(() => {
     let active = true
@@ -792,40 +798,195 @@ export default function AdminPage() {
       : inviteLimitReached
         ? upgradeCopy.limitBody
         : upgradeCopy.freeBody
+  const pendingInviteCount = invites.filter((invite) => {
+    const isExpiredByTime = invite.expires_at ? new Date(invite.expires_at).getTime() <= nowTs : false
+    return invite.status === 'pending' && !isExpiredByTime
+  }).length
+  const sectionCopy =
+    locale === 'he'
+      ? {
+          menuTitle: 'ניווט פנימי',
+          menuDescription: 'בחרו אזור אחד בכל פעם כדי לשמור על פוקוס.',
+          overview: {
+            label: 'סקירה כללית',
+            description: 'תמונה מהירה ומספרים מרכזיים',
+          },
+          insights: {
+            label: 'התראות ותובנות',
+            description: 'סיכון, AI והמלצות פעולה',
+          },
+          team: {
+            label: 'צוות והרשאות',
+            description: 'חברי צוות, הרשאות ודירוג',
+          },
+          invites: {
+            label: 'הזמנות',
+            description: 'שליחה ומעקב אחרי הזמנות',
+          },
+          activity: {
+            label: 'פעילות',
+            description: 'מגמות, פעילות אחרונה וספריית תרחישים',
+          },
+        }
+      : {
+          menuTitle: 'Internal navigation',
+          menuDescription: 'Open one management area at a time to keep the page focused.',
+          overview: {
+            label: 'Overview',
+            description: 'Fast snapshot and key numbers',
+          },
+          insights: {
+            label: 'Insights & alerts',
+            description: 'Risk, AI summary, and recommendations',
+          },
+          team: {
+            label: 'Team & access',
+            description: 'Members, permissions, and leaderboard',
+          },
+          invites: {
+            label: 'Invites',
+            description: 'Send and track invitations',
+          },
+          activity: {
+            label: 'Activity',
+            description: 'Trend, recent actions, and scenario library',
+          },
+        }
+  const adminSections = useMemo(
+    () => [
+      {
+        key: 'overview' as const,
+        icon: Building2,
+        label: sectionCopy.overview.label,
+        description: sectionCopy.overview.description,
+      },
+      {
+        key: 'insights' as const,
+        icon: ShieldAlert,
+        label: sectionCopy.insights.label,
+        description: sectionCopy.insights.description,
+        badge: hasAttentionFlags ? data.attentionFlags.length : undefined,
+      },
+      {
+        key: 'team' as const,
+        icon: Users,
+        label: sectionCopy.team.label,
+        description: sectionCopy.team.description,
+        badge: activeMemberCount,
+      },
+      {
+        key: 'invites' as const,
+        icon: MailPlus,
+        label: sectionCopy.invites.label,
+        description: sectionCopy.invites.description,
+        badge: pendingInviteCount || undefined,
+      },
+      {
+        key: 'activity' as const,
+        icon: Activity,
+        label: sectionCopy.activity.label,
+        description: sectionCopy.activity.description,
+        badge: hasRecentActivity ? data.recentActivity.length : undefined,
+      },
+    ],
+    [
+      activeMemberCount,
+      data.attentionFlags.length,
+      data.recentActivity.length,
+      hasAttentionFlags,
+      hasRecentActivity,
+      pendingInviteCount,
+      sectionCopy.activity.description,
+      sectionCopy.activity.label,
+      sectionCopy.insights.description,
+      sectionCopy.insights.label,
+      sectionCopy.invites.description,
+      sectionCopy.invites.label,
+      sectionCopy.overview.description,
+      sectionCopy.overview.label,
+      sectionCopy.team.description,
+      sectionCopy.team.label,
+    ],
+  )
+  const activeSectionMeta = adminSections.find((section) => section.key === activeSection) ?? adminSections[0]
+  const filteredMembers = useMemo(() => {
+    const query = memberSearch.trim().toLowerCase()
+
+    return members.filter((member) => {
+      const fullName = member.profile?.full_name?.toLowerCase() ?? ''
+      const email = member.profile?.email?.toLowerCase() ?? ''
+      const matchesSearch = query.length === 0 || fullName.includes(query) || email.includes(query)
+      const matchesStatus =
+        memberStatusFilter === 'all' || member.membership.status === memberStatusFilter
+
+      return matchesSearch && matchesStatus
+    })
+  }, [memberSearch, memberStatusFilter, members])
 
   return (
     <>
       <div className="container mx-auto space-y-6 px-4 py-8 lg:px-8" dir={dir}>
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-        <div>
-          <div className="mb-2 flex items-center gap-2 text-sm text-muted-foreground">
-            <Building2 className="h-4 w-4" />
-            <span>{data.organization.name}</span>
-            <span>• {getOrganizationSegmentLabel(data.organization.organization_type, locale)}</span>
-            {data.organization.industry ? <span>• {data.organization.industry}</span> : null}
+        <div className="rounded-3xl border border-border/60 bg-background/90 p-6 shadow-sm">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+            <div>
+              <div className="mb-2 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+                <Building2 className="h-4 w-4" />
+                <span>{data.organization.name}</span>
+                <span>• {getOrganizationSegmentLabel(data.organization.organization_type, locale)}</span>
+                {data.organization.industry ? <span>• {data.organization.industry}</span> : null}
+              </div>
+              <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">{companyCopy.admin.title}</h1>
+              <p className="mt-1 max-w-3xl text-muted-foreground">{companyCopy.admin.subtitle}</p>
+              <div className="mt-4 flex flex-wrap gap-2">
+                <Badge variant="secondary">
+                  {locale === 'he' ? 'סיכון ארגוני' : 'Risk score'}: {riskLabel[data.riskScore.level]}
+                </Badge>
+                <Badge variant="outline">
+                  {locale === 'he' ? `${activeMemberCount} עובדים פעילים` : `${activeMemberCount} active members`}
+                </Badge>
+                <Badge variant="outline">
+                  {locale === 'he'
+                    ? `${pendingInviteCount} הזמנות פתוחות`
+                    : `${pendingInviteCount} pending invites`}
+                </Badge>
+              </div>
+            </div>
+            <div className="flex flex-wrap gap-3">
+              {singleAdminTeam ? (
+                <Button onClick={() => setActiveSection('invites')}>
+                  <MailPlus className="ltr:mr-2 rtl:ml-2 h-4 w-4" />
+                  {companyCopy.admin.inviteTeam}
+                </Button>
+              ) : null}
+              <Link href="/admin/reports">
+                <Button variant="outline">
+                  <Activity className="ltr:mr-2 rtl:ml-2 h-4 w-4" />
+                  {companyCopy.admin.teamReports}
+                </Button>
+              </Link>
+              {data.settings?.allow_leaderboard ? (
+                <Link href="/leaderboard">
+                  <Button variant="outline">
+                    <Trophy className="ltr:mr-2 rtl:ml-2 h-4 w-4" />
+                    {companyCopy.admin.leaderboard}
+                  </Button>
+                </Link>
+              ) : null}
+            </div>
           </div>
-          <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
-            {companyCopy.admin.title}
-          </h1>
-          <p className="mt-1 text-muted-foreground">{companyCopy.admin.subtitle}</p>
         </div>
-        <div className="flex gap-3">
-          <Link href="/admin/reports">
-            <Button variant="outline">
-              <Activity className="ltr:mr-2 rtl:ml-2 h-4 w-4" />
-              {companyCopy.admin.teamReports}
-            </Button>
-          </Link>
-          {data.settings?.allow_leaderboard ? (
-            <Link href="/leaderboard">
-              <Button variant="outline">
-                <Trophy className="ltr:mr-2 rtl:ml-2 h-4 w-4" />
-                {companyCopy.admin.leaderboard}
-              </Button>
-            </Link>
-          ) : null}
-        </div>
-      </div>
+
+        <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_280px]" dir="ltr">
+          <div className="order-2 space-y-6 xl:order-1" dir={dir}>
+            <Card className="border-border/60 bg-muted/20">
+              <CardContent className="flex flex-col gap-2 p-5">
+                <p className="text-sm font-medium text-foreground">{activeSectionMeta.label}</p>
+                <p className="text-sm text-muted-foreground">{activeSectionMeta.description}</p>
+              </CardContent>
+            </Card>
+
+            {activeSection === 'overview' ? (
+              <>
 
       {singleAdminTeam ? (
         <Card className="border-primary/30 bg-primary/5">
@@ -836,12 +997,10 @@ export default function AdminPage() {
               </h2>
               <p className="text-sm text-muted-foreground">{companyCopy.admin.nextStepDescription}</p>
             </div>
-            <Link href="#invite-members">
-              <Button>
-                <MailPlus className="ltr:mr-2 rtl:ml-2 h-4 w-4" />
-                {companyCopy.admin.inviteTeam}
-              </Button>
-            </Link>
+            <Button onClick={() => setActiveSection('invites')}>
+              <MailPlus className="ltr:mr-2 rtl:ml-2 h-4 w-4" />
+              {companyCopy.admin.inviteTeam}
+            </Button>
           </CardContent>
         </Card>
       ) : null}
@@ -1025,7 +1184,11 @@ export default function AdminPage() {
           <CardContent className="text-3xl font-bold">{data.overview.safeDetectionRate}%</CardContent>
         </Card>
       </div>
+              </>
+            ) : null}
 
+            {activeSection === 'insights' ? (
+              <>
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -1106,7 +1269,11 @@ export default function AdminPage() {
           )}
         </CardContent>
       </Card>
+              </>
+            ) : null}
 
+            {activeSection === 'invites' ? (
+              <>
       <div className="grid gap-6 xl:grid-cols-3">
         <Card id="invite-members">
           <CardHeader>
@@ -1207,40 +1374,72 @@ export default function AdminPage() {
           </CardContent>
         </Card>
 
-        <Card className="xl:col-span-2">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <TrendingUp className="h-5 w-5 text-primary" />
-              {companyCopy.admin.teamProgressTrend}
-            </CardTitle>
-            <CardDescription>{companyCopy.admin.teamProgressDescription}</CardDescription>
-          </CardHeader>
-          <CardContent className="h-80">
-            {hasTrendData ? (
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={data.teamProgressTrend}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                  <XAxis dataKey="date" tickLine={false} axisLine={false} />
-                  <YAxis tickLine={false} axisLine={false} />
-                  <Tooltip />
-                  <Area
-                    type="monotone"
-                    dataKey="score"
-                    stroke="var(--color-primary)"
-                    fill="var(--color-primary)"
-                    fillOpacity={0.18}
-                  />
-                </AreaChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className="flex h-full items-center justify-center text-center text-sm text-muted-foreground">
-                {companyCopy.admin.noTrend}
-              </div>
-            )}
-          </CardContent>
-        </Card>
       </div>
 
+      <Card>
+        <CardHeader>
+          <CardTitle>{companyCopy.admin.invitesTitle}</CardTitle>
+          <CardDescription>{companyCopy.admin.invitesDescription}</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {invitesError ? (
+            <p className="text-sm text-muted-foreground">{invitesError}</p>
+          ) : invites.length ? (
+            invites.slice(0, 8).map((invite) => {
+              const isPending = invite.status === 'pending'
+              const isExpiredByTime = invite.expires_at
+                ? new Date(invite.expires_at).getTime() <= nowTs
+                : false
+              const effectiveStatus = isPending && isExpiredByTime ? 'expired' : invite.status
+              const isActionInProgress = inviteActionKey === invite.id
+
+              return (
+                <div key={invite.id} className="rounded-lg border border-border p-3 text-sm">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <p className="font-medium">{invite.email}</p>
+                    <Badge variant={effectiveStatus === 'pending' ? 'secondary' : 'outline'}>
+                      {formatInviteStatusLabel(effectiveStatus, locale)}
+                    </Badge>
+                  </div>
+                  <p className="mt-2 text-muted-foreground">
+                    {formatOrganizationRoleLabel(invite.role, locale)}
+                  </p>
+                  <p className="text-muted-foreground">
+                    {formatRelativeTimestamp(invite.created_at, locale)}
+                  </p>
+                  {invite.expires_at ? (
+                    <p className="text-muted-foreground">
+                      {locale === 'he'
+                        ? `${isExpiredByTime ? 'פג תוקף' : 'יפוג תוקף'} ${formatRelativeTimestamp(invite.expires_at, locale)}`
+                        : `${isExpiredByTime ? 'Expired' : 'Expires'} ${formatRelativeTimestamp(invite.expires_at, locale)}`}
+                    </p>
+                  ) : null}
+                  {isPending ? (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="mt-3"
+                      disabled={isActionInProgress}
+                      onClick={() => void handleCancelInvite(invite.id)}
+                    >
+                      {isActionInProgress
+                        ? companyCopy.admin.actionInProgress
+                        : companyCopy.admin.cancelInvite}
+                    </Button>
+                  ) : null}
+                </div>
+              )
+            })
+          ) : (
+            <p className="text-sm text-muted-foreground">{companyCopy.admin.noInvites}</p>
+          )}
+        </CardContent>
+      </Card>
+              </>
+            ) : null}
+
+            {activeSection === 'team' ? (
+              <>
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -1256,11 +1455,45 @@ export default function AdminPage() {
             </Alert>
           ) : null}
 
+          <div className="grid gap-3 rounded-2xl border border-border/60 bg-muted/20 p-4 md:grid-cols-[minmax(0,1fr)_220px]">
+            <div className="space-y-2">
+              <Label htmlFor="member-search">
+                {locale === 'he' ? 'חיפוש עובד' : 'Search employee'}
+              </Label>
+              <Input
+                id="member-search"
+                value={memberSearch}
+                onChange={(event) => setMemberSearch(event.target.value)}
+                placeholder={locale === 'he' ? 'שם או אימייל' : 'Name or email'}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>{locale === 'he' ? 'סטטוס' : 'Status'}</Label>
+              <div className="flex flex-wrap gap-2">
+                {([
+                  ['all', locale === 'he' ? 'הכול' : 'All'],
+                  ['active', locale === 'he' ? 'פעילים' : 'Active'],
+                  ['suspended', locale === 'he' ? 'מושעים' : 'Suspended'],
+                ] as const).map(([value, label]) => (
+                  <Button
+                    key={value}
+                    type="button"
+                    size="sm"
+                    variant={memberStatusFilter === value ? 'default' : 'outline'}
+                    onClick={() => setMemberStatusFilter(value)}
+                  >
+                    {label}
+                  </Button>
+                ))}
+              </div>
+            </div>
+          </div>
+
           {membersError ? (
             <div className="rounded-lg border border-dashed border-border p-4 text-sm text-muted-foreground">
               {membersError}
             </div>
-          ) : members.length ? (
+          ) : filteredMembers.length ? (
             <Table>
               <TableHeader>
                 <TableRow>
@@ -1273,7 +1506,7 @@ export default function AdminPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {members.map((member) => {
+                {filteredMembers.map((member) => {
                   const isCurrentAdmin = member.membership.user_id === data.membership.user_id
                   const isLastAdmin =
                     member.membership.role === 'admin' &&
@@ -1383,7 +1616,11 @@ export default function AdminPage() {
             </Table>
           ) : (
             <div className="rounded-lg border border-dashed border-border p-4 text-sm text-muted-foreground">
-              {companyCopy.admin.noMembers}
+              {members.length
+                ? locale === 'he'
+                  ? 'לא נמצאו עובדים שמתאימים למסנן הנוכחי.'
+                  : 'No employees match the current filters.'
+                : companyCopy.admin.noMembers}
             </div>
           )}
         </CardContent>
@@ -1465,6 +1702,43 @@ export default function AdminPage() {
           </CardContent>
         </Card>
       </div>
+              </>
+            ) : null}
+
+            {activeSection === 'activity' ? (
+              <>
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <TrendingUp className="h-5 w-5 text-primary" />
+            {companyCopy.admin.teamProgressTrend}
+          </CardTitle>
+          <CardDescription>{companyCopy.admin.teamProgressDescription}</CardDescription>
+        </CardHeader>
+        <CardContent className="h-80">
+          {hasTrendData ? (
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={data.teamProgressTrend}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                <XAxis dataKey="date" tickLine={false} axisLine={false} />
+                <YAxis tickLine={false} axisLine={false} />
+                <Tooltip />
+                <Area
+                  type="monotone"
+                  dataKey="score"
+                  stroke="var(--color-primary)"
+                  fill="var(--color-primary)"
+                  fillOpacity={0.18}
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="flex h-full items-center justify-center text-center text-sm text-muted-foreground">
+              {companyCopy.admin.noTrend}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       <div className="grid gap-6 xl:grid-cols-3">
         <Card>
@@ -1509,65 +1783,6 @@ export default function AdminPage() {
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>{companyCopy.admin.invitesTitle}</CardTitle>
-            <CardDescription>{companyCopy.admin.invitesDescription}</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {invitesError ? (
-              <p className="text-sm text-muted-foreground">{invitesError}</p>
-            ) : invites.length ? (
-              invites.slice(0, 8).map((invite) => {
-                const isPending = invite.status === 'pending'
-                const isExpiredByTime = invite.expires_at
-                  ? new Date(invite.expires_at).getTime() <= nowTs
-                  : false
-                const effectiveStatus = isPending && isExpiredByTime ? 'expired' : invite.status
-                const isActionInProgress = inviteActionKey === invite.id
-
-                return (
-                  <div key={invite.id} className="rounded-lg border border-border p-3 text-sm">
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      <p className="font-medium">{invite.email}</p>
-                      <Badge variant={effectiveStatus === 'pending' ? 'secondary' : 'outline'}>
-                        {formatInviteStatusLabel(effectiveStatus, locale)}
-                      </Badge>
-                    </div>
-                    <p className="mt-2 text-muted-foreground">
-                      {formatOrganizationRoleLabel(invite.role, locale)}
-                    </p>
-                    <p className="text-muted-foreground">
-                      {formatRelativeTimestamp(invite.created_at, locale)}
-                    </p>
-                    {invite.expires_at ? (
-                      <p className="text-muted-foreground">
-                        {locale === 'he'
-                          ? `${isExpiredByTime ? 'פג תוקף' : 'יפוג תוקף'} ${formatRelativeTimestamp(invite.expires_at, locale)}`
-                          : `${isExpiredByTime ? 'Expired' : 'Expires'} ${formatRelativeTimestamp(invite.expires_at, locale)}`}
-                      </p>
-                    ) : null}
-                    {isPending ? (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="mt-3"
-                        disabled={isActionInProgress}
-                        onClick={() => void handleCancelInvite(invite.id)}
-                      >
-                        {isActionInProgress
-                          ? companyCopy.admin.actionInProgress
-                          : companyCopy.admin.cancelInvite}
-                      </Button>
-                    ) : null}
-                  </div>
-                )
-              })
-            ) : (
-              <p className="text-sm text-muted-foreground">{companyCopy.admin.noInvites}</p>
-            )}
-          </CardContent>
-        </Card>
       </div>
 
       <div className="grid gap-6 xl:grid-cols-3">
@@ -1624,6 +1839,66 @@ export default function AdminPage() {
           </CardContent>
         </Card>
       </div>
+              </>
+            ) : null}
+          </div>
+
+          <aside className="order-1 xl:order-2" dir={dir}>
+            <Card className="sticky top-24 border-border/60 shadow-sm">
+              <CardHeader>
+                <CardTitle>{sectionCopy.menuTitle}</CardTitle>
+                <CardDescription>{sectionCopy.menuDescription}</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                {adminSections.map((sectionItem) => {
+                  const Icon = sectionItem.icon
+                  const isActive = sectionItem.key === activeSection
+
+                  return (
+                    <button
+                      key={sectionItem.key}
+                      type="button"
+                      onClick={() => setActiveSection(sectionItem.key)}
+                      className={cn(
+                        'w-full rounded-2xl border p-3 transition',
+                        dir === 'rtl' ? 'text-right' : 'text-left',
+                        isActive
+                          ? 'border-primary/40 bg-primary/5 text-primary'
+                          : 'border-border/60 bg-background hover:border-primary/20 hover:bg-muted/40',
+                      )}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="space-y-1">
+                          <div
+                            className={cn(
+                              'flex items-center gap-2',
+                              dir === 'rtl' ? 'justify-end' : 'justify-start',
+                            )}
+                          >
+                            {sectionItem.badge ? (
+                              <Badge variant={isActive ? 'default' : 'secondary'}>{sectionItem.badge}</Badge>
+                            ) : null}
+                            <span className="font-medium">{sectionItem.label}</span>
+                          </div>
+                          <p className="text-sm text-muted-foreground">{sectionItem.description}</p>
+                        </div>
+                        <div
+                          className={cn(
+                            'rounded-xl p-2',
+                            isActive ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground',
+                          )}
+                        >
+                          <Icon className="h-4 w-4" />
+                        </div>
+                      </div>
+                    </button>
+                  )
+                })}
+              </CardContent>
+            </Card>
+          </aside>
+        </div>
+      </div>
 
       <AlertDialog open={Boolean(memberToRemove)} onOpenChange={(open) => (!open ? setMemberToRemove(null) : null)}>
         <AlertDialogContent dir={dir}>
@@ -1642,7 +1917,6 @@ export default function AdminPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-      </div>
       <AlertDialog open={showPaywall} onOpenChange={setShowPaywall}>
         <AlertDialogContent dir={dir}>
           <AlertDialogHeader>
