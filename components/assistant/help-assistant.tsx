@@ -21,6 +21,7 @@ interface HelpAssistantProps {
 
 export function HelpAssistant({ role, mode }: HelpAssistantProps) {
   const { locale, dir } = useLocale()
+  void mode
   const pathname = usePathname()
   const [open, setOpen] = useState(false)
   const [messages, setMessages] = useState<Message[]>([])

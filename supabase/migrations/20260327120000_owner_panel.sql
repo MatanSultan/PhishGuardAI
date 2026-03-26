@@ -7,6 +7,7 @@ create table if not exists public.platform_owners (
 
 alter table public.platform_owners enable row level security;
 revoke all on public.platform_owners from public;
+-- owners can read/write their own rows via service role only; no RLS policies added intentionally
 
 insert into public.platform_owners (email)
 values ('matansultan1@gmail.com')
@@ -62,8 +63,8 @@ allowed as (
     )
     or caller.jwt_role = 'service_role' as ok
   from caller
-)
-with member_counts as (
+),
+member_counts as (
   select organization_id,
     count(*) filter (where status = 'active') as active_members,
     count(*) as total_members
@@ -118,11 +119,11 @@ select o.id,
   n.owner_note
 from public.organizations o
 cross join allowed
-where allowed.ok
 left join member_counts mc on mc.organization_id = o.id
 left join activity act on act.organization_id = o.id
 left join invite_stats inv on inv.organization_id = o.id
 left join notes n on n.organization_id = o.id
+where allowed.ok
 order by o.created_at desc;
 $$;
 

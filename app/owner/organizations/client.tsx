@@ -283,7 +283,7 @@ export default function OwnerOrganizationsClient() {
   const patchOrg = async (id: string, body: Record<string, unknown>) => {
     setSavingId(id)
     try {
-      const response = await fetch(/api/owner/organizations/, {
+      const response = await fetch(`/api/owner/organizations/${id}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',

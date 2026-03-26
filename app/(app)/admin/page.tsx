@@ -264,6 +264,7 @@ export default function AdminPage() {
   const [inviteActionKey, setInviteActionKey] = useState<string | null>(null)
   const [memberToRemove, setMemberToRemove] = useState<OrganizationMemberRecord | null>(null)
   const [refreshKey, setRefreshKey] = useState(0)
+  const [nowTs] = useState(() => Date.now())
 
   useEffect(() => {
     let active = true
@@ -1520,7 +1521,7 @@ export default function AdminPage() {
               invites.slice(0, 8).map((invite) => {
                 const isPending = invite.status === 'pending'
                 const isExpiredByTime = invite.expires_at
-                  ? new Date(invite.expires_at).getTime() <= Date.now()
+                  ? new Date(invite.expires_at).getTime() <= nowTs
                   : false
                 const effectiveStatus = isPending && isExpiredByTime ? 'expired' : invite.status
                 const isActionInProgress = inviteActionKey === invite.id
