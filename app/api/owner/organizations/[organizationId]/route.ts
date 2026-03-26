@@ -27,20 +27,20 @@ export async function PATCH(
   },
 ) {
   try {
-    const { user, supabase } = await getAuthenticatedRequestContext()
+    const { user } = await getAuthenticatedRequestContext()
     const params = await context.params
 
     requireOwnerUser(user)
 
+    const service = getServiceSupabaseClient()
     if (user?.email) {
-      const service = getServiceSupabaseClient()
       await service.from('platform_owners').upsert({ email: user.email.toLowerCase() })
     }
 
     const body = updateSchema.parse(await request.json())
 
     // @ts-expect-error custom RPC not in generated types
-    const { data, error } = await supabase.rpc('owner_update_org_plan', {
+    const { data, error } = await service.rpc('owner_update_org_plan', {
       org_id: params.organizationId,
       next_plan_status: body.plan_status ?? null,
       next_plan_type: body.plan_type ?? null,
@@ -65,6 +65,8 @@ export async function PATCH(
       return jsonError(error.message, error.statusCode)
     }
 
-    return jsonError('Unable to update organization.', 400, error)
+    const message = error instanceof Error ? error.message : 'Unable to update organization.'
+    console.error('[owner-update]', message, error)
+    return jsonError(message, 400, error)
   }
 }

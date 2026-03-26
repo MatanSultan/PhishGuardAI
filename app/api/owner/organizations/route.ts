@@ -7,18 +7,18 @@ import { getServiceSupabaseClient } from '@/lib/supabase/service'
 
 export async function GET() {
   try {
-    const { user, supabase } = await getAuthenticatedRequestContext()
+    const { user } = await getAuthenticatedRequestContext()
 
     requireOwnerUser(user)
 
+    const service = getServiceSupabaseClient()
     // Ensure caller exists in platform_owners allowlist (service role bypasses RLS)
     if (user?.email) {
-      const service = getServiceSupabaseClient()
       await service.from('platform_owners').upsert({ email: user.email.toLowerCase() })
     }
 
     // @ts-expect-error custom RPC not in generated types
-    const { data: enriched, error } = await supabase.rpc('owner_list_organizations')
+    const { data: enriched, error } = await service.rpc('owner_list_organizations')
 
     if (error) {
       throw error
@@ -56,6 +56,8 @@ export async function GET() {
       return jsonError(error.message, error.statusCode)
     }
 
-    return jsonError('Unable to load organizations.', 400, error)
+    const message = error instanceof Error ? error.message : 'Unable to load organizations.'
+    console.error('[owner-list]', message, error)
+    return jsonError(message, 400, error)
   }
 }
