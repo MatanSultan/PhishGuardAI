@@ -5,6 +5,7 @@ import { getAuthenticatedRequestContext, jsonError } from '@/lib/api'
 import { AuthorizationError } from '@/lib/permissions'
 import { requireOwnerUser } from '@/lib/owner/auth'
 import { PLAN_STATUSES, PLAN_TYPES } from '@/lib/constants'
+import { getServiceSupabaseClient } from '@/lib/supabase/service'
 
 const updateSchema = z.object({
   plan_status: z.enum(PLAN_STATUSES).optional(),
@@ -31,9 +32,15 @@ export async function PATCH(
 
     requireOwnerUser(user)
 
+    if (user?.email) {
+      const service = getServiceSupabaseClient()
+      await service.from('platform_owners').upsert({ email: user.email.toLowerCase() })
+    }
+
     const body = updateSchema.parse(await request.json())
 
-    const { data, error } = await (supabase.rpc as any)('owner_update_org_plan', {
+    // @ts-expect-error custom RPC not in generated types
+    const { data, error } = await supabase.rpc('owner_update_org_plan', {
       org_id: params.organizationId,
       next_plan_status: body.plan_status ?? null,
       next_plan_type: body.plan_type ?? null,

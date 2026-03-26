@@ -25,7 +25,7 @@ type DetectedIntent =
   | 'reports'
   | null
 
-function detectIntent(message: string, locale: 'en' | 'he'): DetectedIntent {
+function detectIntent(message: string): DetectedIntent {
   const text = message.toLowerCase()
   const match = (patterns: string[]) => patterns.some((p) => text.includes(p))
 
@@ -114,7 +114,7 @@ export async function handleAssistantRequest(input: AssistantRequest): Promise<A
     pageContext.actions[0] ||
     (input.locale === 'he' ? 'פתחו את לוח הבקרה והתחילו אימון' : 'Open the dashboard and start training')
 
-  const intent = detectIntent(input.message, input.locale)
+  const intent = detectIntent(input.message)
   console.log('[assistant]', { intent, page: input.page, role: input.role, locale: input.locale })
 
   const intentResponse = intentReply(intent, input, pageContext)

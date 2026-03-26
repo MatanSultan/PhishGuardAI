@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server'
 import { getAuthenticatedRequestContext, jsonError } from '@/lib/api'
 import { AuthorizationError } from '@/lib/permissions'
 import { requireOwnerUser } from '@/lib/owner/auth'
+import { getServiceSupabaseClient } from '@/lib/supabase/service'
 
 export async function GET() {
   try {
@@ -10,13 +11,28 @@ export async function GET() {
 
     requireOwnerUser(user)
 
-    const { data: enriched, error } = await (supabase.rpc as any)('owner_list_organizations')
+    // Ensure caller exists in platform_owners allowlist (service role bypasses RLS)
+    if (user?.email) {
+      const service = getServiceSupabaseClient()
+      await service.from('platform_owners').upsert({ email: user.email.toLowerCase() })
+    }
+
+    // @ts-expect-error custom RPC not in generated types
+    const { data: enriched, error } = await supabase.rpc('owner_list_organizations')
 
     if (error) {
       throw error
     }
 
-    const orgs = (enriched ?? []) as any[]
+    type OwnerOrgRow = {
+      plan_status: string
+      access_blocked: boolean
+      limit_reached?: boolean
+      attempts_7d?: number
+      name: string
+    }
+
+    const orgs = (enriched ?? []) as OwnerOrgRow[]
 
     const stats = {
       total: orgs.length,

@@ -44,6 +44,7 @@ interface NavbarProps {
     role: OrganizationRole
     allowLeaderboard: boolean
   } | null
+  isPlatformOwner?: boolean
 }
 
 type NavLink = {
@@ -52,7 +53,7 @@ type NavLink = {
   icon?: LucideIcon
 }
 
-export function Navbar({ variant = 'landing', organizationState = null }: NavbarProps) {
+export function Navbar({ variant = 'landing', organizationState = null, isPlatformOwner = false }: NavbarProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const { theme, setTheme } = useTheme()
   const router = useRouter()
@@ -124,6 +125,15 @@ export function Navbar({ variant = 'landing', organizationState = null }: Navbar
             href: '/admin',
             label: locale === 'he' ? 'ניהול צוות' : 'Team Admin',
             icon: ShieldCheck,
+          },
+        ]
+      : []),
+    ...(isPlatformOwner
+      ? [
+          {
+            href: '/owner/organizations',
+            label: locale === 'he' ? 'קונסולת בעלים' : 'Owner console',
+            icon: Shield,
           },
         ]
       : []),
