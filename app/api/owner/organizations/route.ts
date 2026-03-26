@@ -49,6 +49,10 @@ function buildOwnerStats(organizations: OwnerListOrganization[]) {
   }
 }
 
+function isMissingAuthSession(error: unknown) {
+  return error instanceof Error && error.message.toLowerCase().includes('auth session missing')
+}
+
 export async function GET() {
   try {
     const { user } = await getAuthenticatedRequestContext()
@@ -236,6 +240,10 @@ export async function GET() {
   } catch (error) {
     if (error instanceof AuthorizationError) {
       return jsonError(error.message, error.statusCode)
+    }
+
+    if (isMissingAuthSession(error)) {
+      return jsonError('Authentication is required.', 401, error)
     }
 
     const message = error instanceof Error ? error.message : 'Unable to load organizations.'

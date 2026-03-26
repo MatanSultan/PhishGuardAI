@@ -7,12 +7,9 @@ import {
   CheckCircle,
   ChevronRight,
   Clock,
-  Mail,
-  MessageSquare,
   Send,
   Shield,
   SkipForward,
-  Smartphone,
   Sparkles,
   XCircle,
 } from 'lucide-react'
@@ -26,11 +23,10 @@ import {
   formatChannelLabel,
   formatDifficultyLabel,
   formatDomainSummary,
-  normalizeSimulationContent,
-  splitSender,
 } from '@/lib/presentation'
 import type { getNextTrainingSimulation, submitTrainingAttempt } from '@/lib/training/service'
 import { cn } from '@/lib/utils'
+import { TrainingSimulationView } from '@/components/training/simulation-view'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -57,30 +53,6 @@ interface ProfilePayload {
     organization_type: OrganizationType
     industry: string | null
   } | null
-}
-
-function getChannelIcon(channel: Channel) {
-  if (channel === 'email') {
-    return Mail
-  }
-
-  if (channel === 'sms') {
-    return Smartphone
-  }
-
-  return MessageSquare
-}
-
-function getChannelTone(channel: Channel) {
-  if (channel === 'email') {
-    return 'bg-primary/10 text-primary'
-  }
-
-  if (channel === 'sms') {
-    return 'bg-sky-500/10 text-sky-700'
-  }
-
-  return 'bg-emerald-500/10 text-emerald-700'
 }
 
 export default function TrainingPage() {
@@ -179,11 +151,6 @@ export default function TrainingPage() {
   }, [simulationState, trainingData?.simulation.id])
 
   const currentSimulation = trainingData?.simulation ?? null
-  const parsedSender = splitSender(currentSimulation?.sender)
-  const formattedContent = useMemo(
-    () => normalizeSimulationContent(currentSimulation?.content),
-    [currentSimulation?.content],
-  )
   const redFlags = useMemo(() => {
     if (!currentSimulation || !Array.isArray(currentSimulation.red_flags)) {
       return []
@@ -257,7 +224,6 @@ export default function TrainingPage() {
     ? getOrganizationSegmentProfile(organizationType, organizationIndustry, locale)
     : null
   const organizationExperience = getOrganizationExperienceProfile(organizationType, locale)
-  const channelIcon = currentSimulation ? getChannelIcon(currentSimulation.channel as Channel) : Mail
   const assignmentDomains = trainingData?.context.selection.selectedDomains ?? []
   const assignmentReasons = trainingData?.context.selection.reasons?.slice(0, 3) ?? []
   const stateBadge =
@@ -468,85 +434,36 @@ export default function TrainingPage() {
                 </CardContent>
               ) : (
                 <>
-                  {currentSimulation.channel === 'email' ? (
-                    <div className="border-b border-border bg-muted/30 p-5">
-                      <div className="mb-3 flex flex-wrap items-center gap-2">
-                        <Badge variant="secondary">{pageCopy.messageTitle}</Badge>
-                        <Badge variant="outline">
-                          {formatChannelLabel(currentSimulation.channel as Channel, locale)}
-                        </Badge>
-                        <Badge variant="outline">
-                          {formatCategoryLabel(currentSimulation.category, locale, organizationType)}
-                        </Badge>
-                      </div>
-                      <div className="space-y-2">
-                        <div className="flex items-center gap-2 text-sm">
-                          <span className="text-muted-foreground">{t.training.simulation.from}:</span>
-                          <span className="font-medium">{parsedSender.name || parsedSender.address}</span>
-                        </div>
-                        <div className="flex items-center gap-2 text-sm">
-                          <span className="text-muted-foreground">{t.training.simulation.subject}:</span>
-                          <span className="font-medium">
-                            {currentSimulation.title ||
-                              formatCategoryLabel(currentSimulation.category, locale, organizationType)}
-                          </span>
-                        </div>
-                        {parsedSender.address ? (
-                          <div className="text-sm text-muted-foreground">{parsedSender.address}</div>
-                        ) : null}
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="border-b border-border bg-muted/30 p-5">
-                      <div className="flex items-center gap-3">
-                        <div
-                          className={cn(
-                            'flex h-11 w-11 items-center justify-center rounded-2xl',
-                            getChannelTone(currentSimulation.channel as Channel),
-                          )}
-                        >
-                          {(() => {
-                            const Icon = channelIcon
-                            return <Icon className="h-5 w-5" />
-                          })()}
-                        </div>
-                        <div className="min-w-0">
-                          <p className="font-medium">
-                            {currentSimulation.sender ||
-                              formatChannelLabel(currentSimulation.channel as Channel, locale)}
-                          </p>
-                          <p className="text-sm text-muted-foreground">
-                            {formatChannelLabel(currentSimulation.channel as Channel, locale)} •{' '}
-                            {formatCategoryLabel(currentSimulation.category, locale, organizationType)}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  <CardContent className="space-y-5 p-6">
+                  <div className="border-b border-border bg-muted/20 px-6 py-4">
                     <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                      <span className="rounded-full border border-border/70 px-3 py-1">
+                      <Badge variant="secondary">{pageCopy.messageTitle}</Badge>
+                      <Badge variant="outline">
+                        {formatChannelLabel(currentSimulation.channel as Channel, locale)}
+                      </Badge>
+                      <Badge variant="outline">
+                        {formatCategoryLabel(currentSimulation.category, locale, organizationType)}
+                      </Badge>
+                      <Badge variant="outline">
                         {formatDifficultyLabel(currentSimulation.difficulty, locale)}
-                      </span>
+                      </Badge>
                       {organizationType ? (
-                        <span className="rounded-full border border-border/70 px-3 py-1">
+                        <Badge variant="outline">
                           {ORGANIZATION_TYPE_LABELS[organizationType][locale === 'he' ? 'he' : 'en']}
-                        </span>
+                        </Badge>
                       ) : null}
                     </div>
+                  </div>
 
-                    <div
-                      className={cn(
-                        'whitespace-pre-wrap rounded-2xl text-sm leading-7 break-words',
-                        currentSimulation.channel === 'email'
-                          ? 'bg-background'
-                          : 'border border-border/60 bg-muted/40 p-5',
-                      )}
-                      dir={currentSimulation.language === 'he' ? 'rtl' : 'ltr'}
-                    >
-                      {formattedContent}
-                    </div>
+                  <CardContent className="p-4 sm:p-6">
+                    <TrainingSimulationView
+                      simulation={currentSimulation}
+                      locale={locale === 'he' ? 'he' : 'en'}
+                      organizationType={organizationType}
+                      frameTitle={pageCopy.messageTitle}
+                      fromLabel={t.training.simulation.from}
+                      subjectLabel={t.training.simulation.subject}
+                      dateLabel={t.training.simulation.date}
+                    />
                   </CardContent>
 
                   {simulationState === 'ready' ? (

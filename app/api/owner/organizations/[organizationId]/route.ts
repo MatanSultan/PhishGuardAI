@@ -18,6 +18,10 @@ const updateSchema = z.object({
   owner_note: z.string().max(1000).optional(),
 })
 
+function isMissingAuthSession(error: unknown) {
+  return error instanceof Error && error.message.toLowerCase().includes('auth session missing')
+}
+
 export async function PATCH(
   request: Request,
   context: {
@@ -72,6 +76,10 @@ export async function PATCH(
   } catch (error) {
     if (error instanceof AuthorizationError) {
       return jsonError(error.message, error.statusCode)
+    }
+
+    if (isMissingAuthSession(error)) {
+      return jsonError('Authentication is required.', 401, error)
     }
 
     if (error instanceof z.ZodError) {
