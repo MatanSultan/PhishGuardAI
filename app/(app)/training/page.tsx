@@ -31,6 +31,7 @@ import {
   formatDifficultyLabel,
   formatDomainSummary,
   splitSender,
+  normalizeSimulationContent,
 } from '@/lib/presentation'
 import type { getNextTrainingSimulation, submitTrainingAttempt } from '@/lib/training/service'
 import { getSuggestedStarterDomains } from '@/lib/training/domains'
@@ -46,6 +47,15 @@ type NextTrainingPayload = Awaited<ReturnType<typeof getNextTrainingSimulation>>
 type SubmitAttemptPayload = Awaited<ReturnType<typeof submitTrainingAttempt>>
 type Channel = 'email' | 'sms' | 'whatsapp'
 type SimulationState = 'active' | 'answered' | 'explained'
+
+const ORGANIZATION_TYPE_LABELS: Record<OrganizationType, { he: string; en: string }> = {
+  nursing_home: { he: 'בית אבות', en: 'Nursing home' },
+  education: { he: 'חינוך', en: 'Education' },
+  nonprofit: { he: 'עמותה', en: 'Nonprofit' },
+  municipality: { he: 'רשות מקומית', en: 'Municipality' },
+  smb: { he: 'עסק קטן', en: 'SMB' },
+  other: { he: 'אחר', en: 'Other' },
+}
 
 interface ProfilePayload {
   trainingProfile?: {
@@ -170,6 +180,10 @@ export default function TrainingPage() {
 
   const currentSimulation = trainingData?.simulation ?? null
   const parsedSender = splitSender(currentSimulation?.sender)
+  const formattedContent = useMemo(
+    () => normalizeSimulationContent(currentSimulation?.content),
+    [currentSimulation?.content],
+  )
   const redFlags = useMemo(() => {
     if (!currentSimulation || !Array.isArray(currentSimulation.red_flags)) {
       return []
@@ -472,13 +486,27 @@ export default function TrainingPage() {
                 )}
 
                 <CardContent className="p-6">
+                  <div className="mb-3 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                    <span className="rounded-full border border-border/70 px-3 py-1">
+                      {formatChannelLabel(currentSimulation.channel as Channel, locale)}
+                    </span>
+                    <span className="rounded-full border border-border/70 px-3 py-1">
+                      {formatCategoryLabel(currentSimulation.category, locale, organizationType)}
+                    </span>
+                    {organizationType ? (
+                      <span className="rounded-full border border-border/70 px-3 py-1">
+                        {ORGANIZATION_TYPE_LABELS[organizationType][locale === 'he' ? 'he' : 'en']}
+                      </span>
+                    ) : null}
+                  </div>
                   <div
                     className={cn(
-                      'whitespace-pre-wrap text-sm leading-relaxed',
+                      'whitespace-pre-wrap text-sm leading-relaxed break-words',
                       currentSimulation.channel !== 'email' && 'rounded-lg bg-muted p-4',
                     )}
+                    dir={currentSimulation.language === 'he' ? 'rtl' : 'ltr'}
                   >
-                    {currentSimulation.content}
+                    {formattedContent}
                   </div>
                 </CardContent>
 

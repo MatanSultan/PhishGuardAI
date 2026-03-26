@@ -1,6 +1,7 @@
 import {
   type Channel,
   type Difficulty,
+  type OrganizationType,
   type SimulationCategory,
   type SupportedLocale,
 } from '@/lib/constants'
@@ -472,9 +473,155 @@ function buildFallbackSimulation(options: SimulationFallbackOptions): Simulation
     },
   }
 
-  const template =
+  const segmentOverrides: Partial<
+    Record<
+      OrganizationType,
+      Partial<
+        Record<
+          Channel,
+          Partial<Record<SimulationCategory, Omit<SimulationGeneration, 'channel' | 'difficulty' | 'category'>>>
+        >
+      >
+    >
+  > = {
+    nursing_home: {
+      email: {
+        bank: {
+          title: 'Updated supplier bank details',
+          sender: 'Sharon Medical Supplies <billing@sharon-medical.co.il>',
+          content:
+            'Hi, for invoice 49281 the bank account was updated this morning. Please transfer today so tomorrow’s medication delivery won’t be delayed. New details in the attached PDF.',
+          isPhishing: true,
+          explanation:
+            'Invoice pressure plus a bank change from an unfamiliar domain. Call the known supplier contact before paying.',
+          redFlags: ['Bank change via email', 'Delivery urgency', 'Sender domain mismatch'],
+        },
+        delivery: {
+          title: 'Medication courier update',
+          sender: 'Duty Pharmacy <updates@duty-pharma.co.il>',
+          content:
+            'Medication for resident Ruth Cohen will arrive 14:00–16:00. No payment or login needed. For courier changes call the known pharmacy only.',
+          isPhishing: false,
+          explanation: 'Routine delivery notice with no links, no payment ask, and a known process.',
+          redFlags: ['No sensitive request', 'Matches routine process', 'No external link'],
+        },
+      },
+      whatsapp: {
+        social: {
+          title: '',
+          sender: 'רבקה | מנהלת משמרת',
+          content:
+            'בוקר טוב, אני עם המשפחה של אחד הדיירים. תשלחי לי כאן את קוד האימות שהגיע כדי לסגור את תשלום הספק הדחוף.',
+          isPhishing: true,
+          explanation: 'Code request + payment pressure over WhatsApp is a classic impersonation.',
+          redFlags: ['בקשת קוד בוואטסאפ', 'לחץ תשלום', 'זהות מוכרת ללא אימות'],
+        },
+      },
+    },
+    education: {
+      email: {
+        social: {
+          title: 'Parent message about urgent form',
+          sender: 'Yael Cohen <parent.forms@outlook-reset.net>',
+          content:
+            'Hello teacher, the principal said every parent must open this attendance form before noon or the child will be marked absent. Please confirm here: https://school-parent-form.net/open',
+          isPhishing: true,
+          explanation: 'Parent impersonation plus urgency and an unknown form domain.',
+          redFlags: ['Unfamiliar domain', 'Attendance threat', 'Parent impersonation'],
+        },
+        account_security: {
+          title: 'School account reset alert',
+          sender: 'Microsoft School Access <security@ms-school-verify.co>',
+          content:
+            'Unusual sign-in detected to your school account. Reset password within 30 minutes to avoid lockout: https://ms-school-verify.co/reset',
+          isPhishing: true,
+          explanation: 'Non-Microsoft domain and rushed reset link. Reset only via the official portal.',
+          redFlags: ['Non-official domain', 'Time pressure', 'Reset link in email'],
+        },
+      },
+    },
+    nonprofit: {
+      email: {
+        bank: {
+          title: 'Donation settlement update',
+          sender: 'Annual Giving Desk <donations@giving-flow-help.org>',
+          content:
+            'Our processor changed the settlement account for this week only. Please transfer the donor payout balance before 16:00 so receipts can be issued on time.',
+          isPhishing: true,
+          explanation: 'One-off bank change + urgency on donations. Verify by phone with finance.',
+          redFlags: ['Temporary bank change', 'Urgent transfer', 'External domain'],
+        },
+      },
+      whatsapp: {
+        social: {
+          title: '',
+          sender: 'ליטל | רכזת מתנדבים',
+          content:
+            'היי, אני צריכה בדחיפות את קובץ המתנדבים של מחר כולל טלפונים וגם את קוד הכניסה שקיבלת עכשיו כדי לפתוח את הקבוצה החדשה.',
+          isPhishing: true,
+          explanation: 'Asks for volunteer data + access code in chat — handle as impersonation.',
+          redFlags: ['בקשה למידע אישי', 'בקשת קוד גישה', 'לחץ בזירת צ׳אט'],
+        },
+      },
+    },
+    municipality: {
+      email: {
+        government: {
+          title: 'Property tax collection update',
+          sender: 'City Billing <billing@arnona-city-update.net>',
+          content:
+            'A discrepancy was found in your municipal collection details. Review the attached notice and sign in today to prevent delays.',
+          isPhishing: true,
+          explanation: 'Government-lookalike domain and rushed login request.',
+          redFlags: ['Fake gov domain', 'Urgent login', 'Attachment + link combo'],
+        },
+      },
+      whatsapp: {
+        workplace: {
+          title: '',
+          sender: 'Municipal Director',
+          content:
+            'I’m heading into a meeting. Approve the attached purchase summary and send me the code you received so finance can release the vendor payment before noon.',
+          isPhishing: true,
+          explanation: 'Authority pressure with a code request via WhatsApp.',
+          redFlags: ['Authority impersonation', 'Code in chat', 'Payment urgency'],
+        },
+      },
+    },
+    smb: {
+      email: {
+        bank: {
+          title: 'Invoice payment reroute',
+          sender: 'Office Supplies <billing@office-pay-support.co>',
+          content:
+            'Attached is the invoice for your office order. Note: bank details were updated — please pay today to avoid delivery delay.',
+          isPhishing: true,
+          explanation: 'Bank change + same-day payment via unfamiliar domain.',
+          redFlags: ['Bank details changed', 'Same-day payment pressure', 'Domain mismatch'],
+        },
+      },
+      sms: {
+        delivery: {
+          title: '',
+          sender: 'Courier IL',
+          content: 'Business parcel is waiting for customs release. Pay the handling fee in the next hour: https://courier-il-fee.net/pay',
+          isPhishing: true,
+          explanation: 'Courier-fee SMS with unknown domain and one-hour deadline.',
+          redFlags: ['Unknown payment link', 'One-hour deadline', 'Fee by SMS'],
+        },
+      },
+    },
+  }
+
+  const baseTemplate =
     messageLibrary[options.locale][options.channel][options.category] ??
     messageLibrary[options.locale].email.delivery
+
+  const override =
+    options.organizationType &&
+    segmentOverrides[options.organizationType]?.[options.channel]?.[options.category]
+
+  const template = override ?? baseTemplate
 
   return {
     channel: options.channel,
@@ -640,6 +787,7 @@ export async function getNextTrainingSimulation(
     difficulty: input.preferredDifficulty ?? personalized.difficulty,
     category: input.preferredCategory ?? personalized.category,
     locale: input.locale ?? personalized.locale,
+    organizationType: organizationContext?.organization.organization_type ?? null,
   }
 
   const exactCandidates = await getCandidateSimulations(supabase, {
