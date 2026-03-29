@@ -64,8 +64,7 @@ create table if not exists public.billing_events (
 );
 
 create unique index if not exists billing_events_provider_event_uidx
-  on public.billing_events (provider_event_id)
-  where provider_event_id is not null;
+  on public.billing_events (provider_event_id);
 
 create index if not exists billing_events_organization_idx
   on public.billing_events (organization_id, created_at desc);
