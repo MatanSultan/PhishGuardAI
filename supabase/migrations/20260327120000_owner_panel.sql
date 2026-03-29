@@ -182,15 +182,15 @@ begin
     raise exception 'Owner access required';
   end if;
 
-  update public.organizations
+  update public.organizations as org
   set
-    plan_status = coalesce(next_plan_status, plan_status),
-    plan_type = coalesce(next_plan_type, plan_type),
-    max_members_allowed = coalesce(next_max_members, max_members_allowed),
-    trial_ends_at = coalesce(next_trial_ends_at, trial_ends_at),
-    access_blocked = coalesce(next_access_blocked, access_blocked),
-    billing_notes = coalesce(next_billing_notes, billing_notes)
-  where id = org_id;
+    plan_status = coalesce(next_plan_status, org.plan_status),
+    plan_type = coalesce(next_plan_type, org.plan_type),
+    max_members_allowed = coalesce(next_max_members, org.max_members_allowed),
+    trial_ends_at = coalesce(next_trial_ends_at, org.trial_ends_at),
+    access_blocked = coalesce(next_access_blocked, org.access_blocked),
+    billing_notes = coalesce(next_billing_notes, org.billing_notes)
+  where org.id = org_id;
 
   if next_follow_up_status is not null or next_owner_note is not null then
     insert into public.owner_org_notes (organization_id, follow_up_status, note, updated_by)
@@ -209,9 +209,9 @@ begin
   end if;
 
   return query
-  select *
-  from public.owner_list_organizations()
-  where id = org_id;
+  select listed.*
+  from public.owner_list_organizations() as listed
+  where listed.id = org_id;
 end;
 $$;
 

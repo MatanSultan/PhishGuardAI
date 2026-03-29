@@ -24,6 +24,7 @@ import {
   formatDifficultyLabel,
   formatDomainSummary,
 } from '@/lib/presentation'
+import { getTrainingIntroCookieName, TRAINING_INTRO_COOKIE_MAX_AGE } from '@/lib/training/intro'
 import type { getNextTrainingSimulation, submitTrainingAttempt } from '@/lib/training/service'
 import { cn } from '@/lib/utils'
 import { TrainingSimulationView } from '@/components/training/simulation-view'
@@ -42,6 +43,8 @@ type SimulationState = 'ready' | 'active' | 'answered' | 'explained'
 interface TrainingPageClientProps {
   initialTrainingData: NextTrainingPayload | null
   initialError: string | null
+  initialIntroSeen: boolean
+  userId: string
 }
 
 const ORGANIZATION_TYPE_LABELS: Record<OrganizationType, { he: string; en: string }> = {
@@ -56,9 +59,14 @@ const ORGANIZATION_TYPE_LABELS: Record<OrganizationType, { he: string; en: strin
 export default function TrainingPageClient({
   initialTrainingData,
   initialError,
+  initialIntroSeen,
+  userId,
 }: TrainingPageClientProps) {
   const { t, locale, dir } = useLocale()
-  const [simulationState, setSimulationState] = useState<SimulationState>('ready')
+  const [hasSeenIntro, setHasSeenIntro] = useState(initialIntroSeen)
+  const [simulationState, setSimulationState] = useState<SimulationState>(
+    initialTrainingData && initialIntroSeen ? 'active' : 'ready',
+  )
   const [selectedAnswer, setSelectedAnswer] = useState<'phishing' | 'safe' | null>(null)
   const [confidence, setConfidence] = useState<number>(1)
   const [reasoning, setReasoning] = useState('')
@@ -77,8 +85,34 @@ export default function TrainingPageClient({
   const [organizationIndustry, setOrganizationIndustry] = useState<string | null>(
     initialTrainingData?.context.organization?.industry ?? null,
   )
+  const introCookieName = getTrainingIntroCookieName(userId)
+
+  const markIntroSeen = useCallback(() => {
+    setHasSeenIntro(true)
+    document.cookie = `${introCookieName}=1; path=/; max-age=${TRAINING_INTRO_COOKIE_MAX_AGE}; SameSite=Lax`
+  }, [introCookieName])
+
+  const applyLoadedSimulation = useCallback(
+    (payload: NextTrainingPayload, skipIntro: boolean) => {
+      setOrganizationType(payload.context.organization?.organization_type ?? null)
+      setOrganizationIndustry(payload.context.organization?.industry ?? null)
+      setTrainingData(payload)
+      setResultData(null)
+      setSimulationState(skipIntro ? 'active' : 'ready')
+      setSelectedAnswer(null)
+      setConfidence(1)
+      setReasoning('')
+      setTimeRemaining(120)
+      setStartedAt(skipIntro ? Date.now() : 0)
+      setIsLoading(false)
+      setIsRefreshing(false)
+    },
+    [],
+  )
 
   const loadSimulation = useCallback(async () => {
+    const skipIntro = hasSeenIntro
+
     if (trainingData) {
       setIsRefreshing(true)
     } else {
@@ -104,24 +138,13 @@ export default function TrainingPageClient({
         return
       }
 
-      setOrganizationType(payload?.context?.organization?.organization_type ?? null)
-      setOrganizationIndustry(payload?.context?.organization?.industry ?? null)
-      setTrainingData(payload)
-      setResultData(null)
-      setSimulationState('ready')
-      setSelectedAnswer(null)
-      setConfidence(1)
-      setReasoning('')
-      setTimeRemaining(120)
-      setStartedAt(0)
-      setIsLoading(false)
-      setIsRefreshing(false)
+      applyLoadedSimulation(payload as NextTrainingPayload, skipIntro)
     } catch {
       setError(t.common.error)
       setIsLoading(false)
       setIsRefreshing(false)
     }
-  }, [locale, t.common.error, trainingData])
+  }, [applyLoadedSimulation, hasSeenIntro, locale, t.common.error, trainingData])
 
   useEffect(() => {
     if (initialTrainingData || initialError) {
@@ -132,7 +155,15 @@ export default function TrainingPageClient({
   }, [initialError, initialTrainingData, loadSimulation])
 
   useEffect(() => {
-    if (simulationState !== 'active' || !trainingData?.simulation.id) {
+    if (simulationState !== 'active' || !trainingData?.simulation.id || startedAt > 0) {
+      return
+    }
+
+    setStartedAt(Date.now())
+  }, [simulationState, startedAt, trainingData?.simulation.id])
+
+  useEffect(() => {
+    if (simulationState !== 'active' || !trainingData?.simulation.id || startedAt <= 0) {
       return
     }
 
@@ -141,7 +172,7 @@ export default function TrainingPageClient({
     }, 1000)
 
     return () => window.clearInterval(timer)
-  }, [simulationState, trainingData?.simulation.id])
+  }, [simulationState, startedAt, trainingData?.simulation.id])
 
   const currentSimulation = trainingData?.simulation ?? null
   const redFlags = useMemo(() => {
@@ -153,6 +184,10 @@ export default function TrainingPageClient({
   }, [currentSimulation])
 
   const handleStartSimulation = () => {
+    if (!hasSeenIntro) {
+      markIntroSeen()
+    }
+
     setStartedAt(Date.now())
     setSimulationState('active')
   }
@@ -448,15 +483,26 @@ export default function TrainingPageClient({
                   </div>
 
                   <CardContent className="p-4 sm:p-6">
-                    <TrainingSimulationView
-                      simulation={currentSimulation}
-                      locale={locale === 'he' ? 'he' : 'en'}
-                      organizationType={organizationType}
-                      frameTitle={pageCopy.messageTitle}
-                      fromLabel={t.training.simulation.from}
-                      subjectLabel={t.training.simulation.subject}
-                      dateLabel={t.training.simulation.date}
-                    />
+                    <div className="relative">
+                      <TrainingSimulationView
+                        simulation={currentSimulation}
+                        locale={locale === 'he' ? 'he' : 'en'}
+                        organizationType={organizationType}
+                        frameTitle={pageCopy.messageTitle}
+                        fromLabel={t.training.simulation.from}
+                        subjectLabel={t.training.simulation.subject}
+                        dateLabel={t.training.simulation.date}
+                      />
+
+                      {isRefreshing ? (
+                        <div className="pointer-events-none absolute inset-x-3 top-3 z-10 sm:inset-x-4 sm:top-4">
+                          <div className="inline-flex items-center gap-2 rounded-full border border-primary/25 bg-background/95 px-3 py-1.5 text-xs font-medium text-primary shadow-sm backdrop-blur">
+                            <Sparkles className="h-3.5 w-3.5" />
+                            {locale === 'he' ? 'מכינים את התרחיש הבא' : 'Preparing the next scenario'}
+                          </div>
+                        </div>
+                      ) : null}
+                    </div>
                   </CardContent>
 
                   {simulationState === 'ready' ? (

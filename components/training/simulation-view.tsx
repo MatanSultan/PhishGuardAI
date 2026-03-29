@@ -1,6 +1,6 @@
 'use client'
 
-import type { ReactNode } from 'react'
+import { memo, type ReactNode } from 'react'
 import {
   BatteryCharging,
   Clock3,
@@ -468,29 +468,30 @@ function MessageBubble({
   )
 }
 
-function MessageStack({
+function MessageGroup({
   paragraphs,
   time,
   compact = false,
+  accent = false,
 }: {
   paragraphs: string[]
   time: string
   compact?: boolean
+  accent?: boolean
 }) {
   return (
-    <div className="space-y-1.5">
-      {paragraphs.map((paragraph, index) => (
-        <MessageBubble key={`${paragraph}-${index}`} compact={compact} isLast={index === paragraphs.length - 1}>
+    <MessageBubble compact={compact} accent={accent} isLast>
+      <div className="space-y-2">
+        {paragraphs.map((paragraph, index) => (
           <MessageParagraph
+            key={`${paragraph}-${index}`}
             paragraph={paragraph}
             className={cn(compact ? 'text-[14px] leading-6' : 'text-sm leading-6')}
           />
-          {index === paragraphs.length - 1 ? (
-            <p className="mt-2 text-[11px] text-muted-foreground">{time}</p>
-          ) : null}
-        </MessageBubble>
-      ))}
-    </div>
+        ))}
+        <p className="pt-1 text-[11px] text-muted-foreground">{time}</p>
+      </div>
+    </MessageBubble>
   )
 }
 
@@ -554,6 +555,17 @@ function EmailSimulationView({
         />
 
         <div className="overflow-hidden rounded-[26px] border border-border/70 bg-background shadow-sm">
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/60 bg-muted/20 px-4 py-2.5 text-xs text-muted-foreground sm:px-5">
+            <div className="flex items-center gap-2">
+              <Mail className="h-3.5 w-3.5" />
+              <span>{copy.emailMode}</span>
+            </div>
+            <div className="inline-flex items-center gap-2 rounded-full border border-border/70 bg-background px-2.5 py-1">
+              <Shield className="h-3.5 w-3.5 text-primary" />
+              <span>{copy.inspectLabel}</span>
+            </div>
+          </div>
+
           <div className="border-b border-border/60 bg-muted/25 px-4 py-3 sm:px-5">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div className="min-w-0 flex-1">
@@ -711,7 +723,7 @@ function ChatSimulationView({
           <DateSeparator label={timestamp} />
 
           <div className="space-y-2.5" dir={messageDir}>
-            <MessageStack paragraphs={paragraphs} time={statusTime} />
+            <MessageGroup paragraphs={paragraphs} time={statusTime} />
 
             {attachmentLabel ? (
               <MessageBubble>
@@ -800,7 +812,7 @@ function SmsSimulationView({
           <DateSeparator label={copy.todayLabel} />
 
           <div className="space-y-2" dir={messageDir}>
-            <MessageStack paragraphs={paragraphs} time={statusTime} compact />
+            <MessageGroup paragraphs={paragraphs} time={statusTime} compact />
 
             {attachmentLabel ? (
               <MessageBubble compact>
@@ -824,7 +836,7 @@ function SmsSimulationView({
   )
 }
 
-export function TrainingSimulationView(props: TrainingSimulationViewProps) {
+const TrainingSimulationViewComponent = (props: TrainingSimulationViewProps) => {
   if (props.simulation.channel === 'email') {
     return <EmailSimulationView {...props} />
   }
@@ -835,3 +847,6 @@ export function TrainingSimulationView(props: TrainingSimulationViewProps) {
 
   return <ChatSimulationView {...props} />
 }
+
+export const TrainingSimulationView = memo(TrainingSimulationViewComponent)
+TrainingSimulationView.displayName = 'TrainingSimulationView'
