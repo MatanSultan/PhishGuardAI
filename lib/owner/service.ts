@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 
+import type { OwnerBillingPayload } from '@/lib/billing/service'
 import type { Database, TableRow } from '@/lib/database.types'
 
 type AppSupabaseClient = SupabaseClient<Database>
@@ -47,6 +48,11 @@ export interface OwnerListStats {
 export interface OwnerOrganizationsPayload {
   organizations: OwnerListOrganization[]
   stats: OwnerListStats
+}
+
+export interface OwnerConsolePayload extends OwnerOrganizationsPayload {
+  billing: OwnerBillingPayload | null
+  billingError: string | null
 }
 
 function normalizeOwnerOrganization(row: OwnerRpcRow): OwnerListOrganization {

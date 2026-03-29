@@ -40,12 +40,15 @@ import {
   type FeedbackState,
   type FilterKey,
   type FollowUpStatus,
+  type OwnerBillingPayload,
   type OwnerOrg,
   type SectionKey,
 } from './types'
 
 interface OwnerOrganizationsClientProps {
   initialOrganizations: OwnerOrg[]
+  initialBilling: OwnerBillingPayload | null
+  initialBillingError: string | null
   initialError: string | null
   initialOwnerEmail: string | null
   initialDidLoad: boolean
@@ -132,6 +135,8 @@ function OwnerSectionNav({
 
 export default function OwnerOrganizationsClient({
   initialOrganizations,
+  initialBilling,
+  initialBillingError,
   initialError,
   initialOwnerEmail,
   initialDidLoad,
@@ -142,6 +147,8 @@ export default function OwnerOrganizationsClient({
   const isRtl = getDirection(activeLocale) === 'rtl'
 
   const [organizations, setOrganizations] = useState<OwnerOrg[]>(initialOrganizations)
+  const [billing, setBilling] = useState<OwnerBillingPayload | null>(initialBilling)
+  const [billingError, setBillingError] = useState<string | null>(initialBillingError)
   const [loading, setLoading] = useState(!initialDidLoad && !initialError)
   const [feedback, setFeedback] = useState<FeedbackState>(
     initialError ? { kind: 'error', message: initialError } : null,
@@ -170,7 +177,10 @@ export default function OwnerOrganizationsClient({
       }
 
       const nextOrganizations = (payload?.organizations ?? []) as OwnerOrg[]
+      const nextBilling = (payload?.billing ?? null) as OwnerBillingPayload | null
       setOrganizations(nextOrganizations)
+      setBilling(nextBilling)
+      setBillingError(typeof payload?.billingError === 'string' ? payload.billingError : null)
       setSelectedOrgId((current) =>
         current && nextOrganizations.some((org) => org.id === current)
           ? current
@@ -344,6 +354,23 @@ export default function OwnerOrganizationsClient({
     return new Date(value).toLocaleDateString(activeLocale === 'he' ? 'he-IL' : 'en-US')
   }
 
+  const formatDateTime = (value?: string | null) => {
+    if (!value) return t.common.noDate
+    return new Date(value).toLocaleString(activeLocale === 'he' ? 'he-IL' : 'en-US')
+  }
+
+  const formatMoney = (amount: number, currency: string) =>
+    new Intl.NumberFormat(activeLocale === 'he' ? 'he-IL' : 'en-US', {
+      style: 'currency',
+      currency,
+      maximumFractionDigits: 2,
+    }).format(amount)
+
+  const formatBillingState = (value?: string | null) => {
+    if (!value) return t.common.noDate
+    return value.replaceAll('_', ' ')
+  }
+
   const renderSignals = (organization: OwnerOrg) => {
     const signals: string[] = []
     if (organization.access_blocked || organization.plan_status === 'blocked') signals.push(t.alerts.blocked)
@@ -363,6 +390,12 @@ export default function OwnerOrganizationsClient({
         badge: filteredOrganizations.length || undefined,
       },
       {
+        key: 'billing',
+        label: t.sections.billing,
+        description: t.billing.description,
+        badge: billing?.summary.pendingOrders || undefined,
+      },
+      {
         key: 'plans',
         label: t.sections.plans,
         description: t.plans.description,
@@ -376,15 +409,18 @@ export default function OwnerOrganizationsClient({
       },
     ],
     [
+      billing?.summary.pendingOrders,
       filteredOrganizations.length,
       selectedOrganization?.access_blocked,
       selectedOrganization?.limit_reached,
       stats.attention,
       t.activity.description,
+      t.billing.description,
       t.organizations.description,
       t.overview.description,
       t.plans.description,
       t.sections.activity,
+      t.sections.billing,
       t.sections.organizations,
       t.sections.overview,
       t.sections.plans,
@@ -622,6 +658,148 @@ export default function OwnerOrganizationsClient({
         </div>
       </CardContent>
     </Card>
+  )
+
+  const renderBillingSection = () => (
+    <>
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <MetricCard
+          title={t.billing.completed}
+          value={billing?.summary.completedPayments ?? 0}
+          description={t.billing.recentOrdersDescription}
+          icon={CreditCard}
+        />
+        <MetricCard
+          title={t.billing.pending}
+          value={billing?.summary.pendingOrders ?? 0}
+          description={t.billing.recentEventsDescription}
+          icon={Clock3}
+        />
+        <MetricCard
+          title={t.billing.failed}
+          value={billing?.summary.failedPayments ?? 0}
+          description={t.billing.recentChangesDescription}
+          icon={AlertTriangle}
+        />
+        <MetricCard
+          title={t.billing.volume}
+          value={Number((billing?.summary.completedAmount ?? 0).toFixed(2))}
+          description={billing?.summary.currency ?? 'ILS'}
+          icon={TrendingUp}
+        />
+      </div>
+
+      {billingError ? (
+        <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-amber-800 dark:text-amber-200">
+          {t.billing.loadError}
+        </div>
+      ) : null}
+
+      <div className="grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
+        <Card className="rounded-3xl">
+          <CardHeader>
+            <CardTitle>{t.billing.recentOrdersTitle}</CardTitle>
+            <CardDescription>{t.billing.recentOrdersDescription}</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {billing?.recentOrders.length ? (
+              billing.recentOrders.map((order) => (
+                <div key={order.id} className="rounded-2xl border border-border/60 p-4">
+                  <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                    <div className="space-y-2">
+                      <p className="font-semibold">{order.organizationName}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {t.billing.amount}: {formatMoney(order.amount, order.currency)}
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        {t.billing.plan}: {formatPlanType(order.targetPlanType)} • {formatBillingState(order.targetPlanStatus)}
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        {t.billing.capturedAt}: {formatDateTime(order.capturedAt ?? order.createdAt)}
+                      </p>
+                      {order.payerEmail ? (
+                        <p className="text-sm text-muted-foreground">
+                          {t.billing.payer}: <span className="break-all">{order.payerEmail}</span>
+                        </p>
+                      ) : null}
+                    </div>
+
+                    <div className="flex flex-wrap gap-2">
+                      <Badge variant="outline">{formatBillingState(order.status)}</Badge>
+                      {order.captureStatus ? <Badge variant="secondary">{formatBillingState(order.captureStatus)}</Badge> : null}
+                    </div>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <PanelEmptyState title={t.billing.recentOrdersTitle} description={t.billing.noOrders} compact />
+            )}
+          </CardContent>
+        </Card>
+
+        <div className="space-y-6">
+          <Card className="rounded-3xl">
+            <CardHeader>
+              <CardTitle>{t.billing.recentEventsTitle}</CardTitle>
+              <CardDescription>{t.billing.recentEventsDescription}</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {billing?.recentEvents.length ? (
+                billing.recentEvents.map((event) => (
+                  <div key={event.id} className="rounded-2xl border border-border/60 p-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="space-y-1">
+                        <p className="font-medium">{event.summary}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {(event.organizationName ?? t.common.noDate)} • {t.billing.source}: {formatBillingState(event.source)}
+                        </p>
+                        <p className="text-sm text-muted-foreground">{formatDateTime(event.createdAt)}</p>
+                      </div>
+                      {event.status ? <Badge variant="outline">{formatBillingState(event.status)}</Badge> : null}
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <PanelEmptyState title={t.billing.recentEventsTitle} description={t.billing.noEvents} compact />
+              )}
+            </CardContent>
+          </Card>
+
+          <Card className="rounded-3xl">
+            <CardHeader>
+              <CardTitle>{t.billing.recentChangesTitle}</CardTitle>
+              <CardDescription>{t.billing.recentChangesDescription}</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {billing?.recentPlanChanges.length ? (
+                billing.recentPlanChanges.map((change) => (
+                  <div key={change.id} className="rounded-2xl border border-border/60 p-3">
+                    <div className="space-y-2">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="font-medium">{change.organizationName}</p>
+                        <Badge variant="secondary">{formatBillingState(change.source)}</Badge>
+                      </div>
+                      <p className="text-sm text-muted-foreground">
+                        {formatPlanType(change.previousPlanType)} / {formatBillingState(change.previousPlanStatus)} →{' '}
+                        {formatPlanType(change.nextPlanType)} / {formatBillingState(change.nextPlanStatus)}
+                      </p>
+                      {change.note ? (
+                        <p className="text-sm text-muted-foreground">
+                          {t.billing.note}: {change.note}
+                        </p>
+                      ) : null}
+                      <p className="text-sm text-muted-foreground">{formatDateTime(change.createdAt)}</p>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <PanelEmptyState title={t.billing.recentChangesTitle} description={t.billing.noChanges} compact />
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    </>
   )
 
   const renderPlansSection = () => (
@@ -988,6 +1166,7 @@ export default function OwnerOrganizationsClient({
 
           {section === 'overview' ? renderOverviewSection() : null}
           {section === 'organizations' ? renderOrganizationsSection() : null}
+          {section === 'billing' ? renderBillingSection() : null}
           {section === 'plans' ? renderPlansSection() : null}
           {section === 'activity' ? renderActivitySection() : null}
         </div>

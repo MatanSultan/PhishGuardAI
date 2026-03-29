@@ -1,9 +1,10 @@
 import { NextResponse } from 'next/server'
 
 import { getAuthenticatedRequestContext, jsonError } from '@/lib/api'
+import { getOwnerBillingPayload } from '@/lib/billing/service'
 import { AuthorizationError } from '@/lib/permissions'
 import { requireOwnerUser } from '@/lib/owner/auth'
-import type { OwnerOrganizationsPayload } from '@/lib/owner/service'
+import type { OwnerConsolePayload, OwnerOrganizationsPayload } from '@/lib/owner/service'
 import { getOwnerOrganizationsPayload, getOwnerOrganizationsPayloadViaRpc } from '@/lib/owner/service'
 import { getSupabaseEnvDiagnostics } from '@/lib/supabase/diagnostics'
 import { getServiceSupabaseClient } from '@/lib/supabase/service'
@@ -37,6 +38,30 @@ export async function GET() {
     let payload: OwnerOrganizationsPayload
     let source: 'rpc' | 'service_query' = 'rpc'
     const canUseServiceFallback = access.viaEnv && !access.viaDatabase
+    const billingPromise = (async () => {
+      try {
+        const service = getServiceSupabaseClient()
+        const billing = await getOwnerBillingPayload(service)
+
+        return {
+          billing,
+          billingError: null as string | null,
+        }
+      } catch (billingError) {
+        const message =
+          billingError instanceof Error ? billingError.message : 'Unable to load billing activity.'
+
+        console.warn('[owner-list] Unable to load billing payload.', {
+          email: ownerEmail,
+          message,
+        })
+
+        return {
+          billing: null,
+          billingError: message,
+        }
+      }
+    })()
 
     try {
       payload = await getOwnerOrganizationsPayloadViaRpc(supabase)
@@ -55,14 +80,22 @@ export async function GET() {
       })
     }
 
+    const billingState = await billingPromise
+    const responsePayload: OwnerConsolePayload = {
+      ...payload,
+      billing: billingState.billing,
+      billingError: billingState.billingError,
+    }
+
     console.info('[owner-list] response ready', {
       email: ownerEmail,
       source,
-      organizations: payload.organizations.length,
-      recent: payload.stats.recent,
+      organizations: responsePayload.organizations.length,
+      recent: responsePayload.stats.recent,
+      billingOrders: responsePayload.billing?.recentOrders.length ?? 0,
     })
 
-    return NextResponse.json(payload)
+    return NextResponse.json(responsePayload)
   } catch (error) {
     if (error instanceof AuthorizationError) {
       return jsonError(error.message, error.statusCode)

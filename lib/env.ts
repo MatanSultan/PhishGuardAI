@@ -8,6 +8,15 @@ const envSchema = z.object({
   APP_URL: z.string().url().optional(),
   NEXT_PUBLIC_APP_URL: z.string().url().optional(),
   OWNER_EMAILS: z.string().optional(),
+  PAYPAL_CLIENT_ID: z.string().min(1).optional(),
+  PAYPAL_CLIENT_SECRET: z.string().min(1).optional(),
+  PAYPAL_ENVIRONMENT: z.string().optional(),
+  PAYPAL_WEBHOOK_ID: z.string().min(1).optional(),
+  PAYPAL_UPGRADE_AMOUNT: z.string().optional(),
+  PAYPAL_UPGRADE_CURRENCY: z.string().optional(),
+  PAYPAL_UPGRADE_PLAN_TYPE: z.string().optional(),
+  PAYPAL_UPGRADE_PLAN_STATUS: z.string().optional(),
+  PAYPAL_UPGRADE_MAX_MEMBERS: z.string().optional(),
 })
 
 export const env = envSchema.parse({
@@ -18,6 +27,15 @@ export const env = envSchema.parse({
   APP_URL: process.env.APP_URL,
   NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
   OWNER_EMAILS: process.env.OWNER_EMAILS,
+  PAYPAL_CLIENT_ID: process.env.PAYPAL_CLIENT_ID,
+  PAYPAL_CLIENT_SECRET: process.env.PAYPAL_CLIENT_SECRET,
+  PAYPAL_ENVIRONMENT: process.env.PAYPAL_ENVIRONMENT,
+  PAYPAL_WEBHOOK_ID: process.env.PAYPAL_WEBHOOK_ID,
+  PAYPAL_UPGRADE_AMOUNT: process.env.PAYPAL_UPGRADE_AMOUNT,
+  PAYPAL_UPGRADE_CURRENCY: process.env.PAYPAL_UPGRADE_CURRENCY,
+  PAYPAL_UPGRADE_PLAN_TYPE: process.env.PAYPAL_UPGRADE_PLAN_TYPE,
+  PAYPAL_UPGRADE_PLAN_STATUS: process.env.PAYPAL_UPGRADE_PLAN_STATUS,
+  PAYPAL_UPGRADE_MAX_MEMBERS: process.env.PAYPAL_UPGRADE_MAX_MEMBERS,
 })
 
 export function getAppUrl() {

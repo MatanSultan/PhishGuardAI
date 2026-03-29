@@ -46,6 +46,207 @@ export interface Database {
         }
         Relationships: NoRelationships
       }
+      billing_events: {
+        Row: {
+          actor_user_id: string | null
+          billing_order_id: string | null
+          created_at: string
+          event_type: string
+          id: string
+          organization_id: string | null
+          payload: Json
+          provider: 'paypal' | null
+          provider_event_id: string | null
+          source: 'checkout' | 'capture' | 'webhook' | 'system'
+          status: string | null
+          summary: string
+        }
+        Insert: {
+          actor_user_id?: string | null
+          billing_order_id?: string | null
+          created_at?: string
+          event_type: string
+          id?: string
+          organization_id?: string | null
+          payload?: Json
+          provider?: 'paypal' | null
+          provider_event_id?: string | null
+          source: 'checkout' | 'capture' | 'webhook' | 'system'
+          status?: string | null
+          summary: string
+        }
+        Update: {
+          actor_user_id?: string | null
+          billing_order_id?: string | null
+          created_at?: string
+          event_type?: string
+          id?: string
+          organization_id?: string | null
+          payload?: Json
+          provider?: 'paypal' | null
+          provider_event_id?: string | null
+          source?: 'checkout' | 'capture' | 'webhook' | 'system'
+          status?: string | null
+          summary?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'billing_events_actor_user_id_fkey'
+            columns: ['actor_user_id']
+            referencedRelation: 'profiles'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'billing_events_billing_order_id_fkey'
+            columns: ['billing_order_id']
+            referencedRelation: 'billing_orders'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'billing_events_organization_id_fkey'
+            columns: ['organization_id']
+            referencedRelation: 'organizations'
+            referencedColumns: ['id']
+          },
+        ]
+      }
+      billing_orders: {
+        Row: {
+          amount: number
+          approval_url: string | null
+          captured_at: string | null
+          created_at: string
+          currency: string
+          id: string
+          idempotency_key: string
+          initiated_by: string | null
+          metadata: Json
+          organization_id: string
+          payer_email: string | null
+          plan_applied_at: string | null
+          processed_at: string | null
+          provider: 'paypal'
+          provider_order_id: string
+          provider_payload: Json
+          status: 'created' | 'approved' | 'captured' | 'completed' | 'failed' | 'canceled'
+          target_max_members: number
+          target_plan_status: string
+          target_plan_type: string
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          approval_url?: string | null
+          captured_at?: string | null
+          created_at?: string
+          currency: string
+          id?: string
+          idempotency_key: string
+          initiated_by?: string | null
+          metadata?: Json
+          organization_id: string
+          payer_email?: string | null
+          plan_applied_at?: string | null
+          processed_at?: string | null
+          provider?: 'paypal'
+          provider_order_id: string
+          provider_payload?: Json
+          status?: 'created' | 'approved' | 'captured' | 'completed' | 'failed' | 'canceled'
+          target_max_members: number
+          target_plan_status: string
+          target_plan_type: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          approval_url?: string | null
+          captured_at?: string | null
+          created_at?: string
+          currency?: string
+          id?: string
+          idempotency_key?: string
+          initiated_by?: string | null
+          metadata?: Json
+          organization_id?: string
+          payer_email?: string | null
+          plan_applied_at?: string | null
+          processed_at?: string | null
+          provider?: 'paypal'
+          provider_order_id?: string
+          provider_payload?: Json
+          status?: 'created' | 'approved' | 'captured' | 'completed' | 'failed' | 'canceled'
+          target_max_members?: number
+          target_plan_status?: string
+          target_plan_type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'billing_orders_initiated_by_fkey'
+            columns: ['initiated_by']
+            referencedRelation: 'profiles'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'billing_orders_organization_id_fkey'
+            columns: ['organization_id']
+            referencedRelation: 'organizations'
+            referencedColumns: ['id']
+          },
+        ]
+      }
+      billing_payments: {
+        Row: {
+          amount: number
+          billing_order_id: string
+          created_at: string
+          currency: string
+          id: string
+          payer_email: string | null
+          provider: 'paypal'
+          provider_capture_id: string
+          provider_payload: Json
+          source: 'capture' | 'webhook'
+          status: 'completed' | 'pending' | 'failed' | 'refunded' | 'declined'
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          billing_order_id: string
+          created_at?: string
+          currency: string
+          id?: string
+          payer_email?: string | null
+          provider?: 'paypal'
+          provider_capture_id: string
+          provider_payload?: Json
+          source: 'capture' | 'webhook'
+          status: 'completed' | 'pending' | 'failed' | 'refunded' | 'declined'
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          billing_order_id?: string
+          created_at?: string
+          currency?: string
+          id?: string
+          payer_email?: string | null
+          provider?: 'paypal'
+          provider_capture_id?: string
+          provider_payload?: Json
+          source?: 'capture' | 'webhook'
+          status?: 'completed' | 'pending' | 'failed' | 'refunded' | 'declined'
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'billing_payments_billing_order_id_fkey'
+            columns: ['billing_order_id']
+            referencedRelation: 'billing_orders'
+            referencedColumns: ['id']
+          },
+        ]
+      }
       memory_entries: {
         Row: {
           content: string
@@ -126,6 +327,73 @@ export interface Database {
           organization_id?: string
         }
         Relationships: NoRelationships
+      }
+      organization_plan_changes: {
+        Row: {
+          billing_order_id: string | null
+          changed_by: string | null
+          created_at: string
+          id: string
+          next_max_members: number
+          next_plan_status: string
+          next_plan_type: string
+          note: string | null
+          organization_id: string
+          previous_max_members: number
+          previous_plan_status: string
+          previous_plan_type: string
+          source: 'owner_console' | 'paypal_payment' | 'system'
+        }
+        Insert: {
+          billing_order_id?: string | null
+          changed_by?: string | null
+          created_at?: string
+          id?: string
+          next_max_members: number
+          next_plan_status: string
+          next_plan_type: string
+          note?: string | null
+          organization_id: string
+          previous_max_members: number
+          previous_plan_status: string
+          previous_plan_type: string
+          source: 'owner_console' | 'paypal_payment' | 'system'
+        }
+        Update: {
+          billing_order_id?: string | null
+          changed_by?: string | null
+          created_at?: string
+          id?: string
+          next_max_members?: number
+          next_plan_status?: string
+          next_plan_type?: string
+          note?: string | null
+          organization_id?: string
+          previous_max_members?: number
+          previous_plan_status?: string
+          previous_plan_type?: string
+          source?: 'owner_console' | 'paypal_payment' | 'system'
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'organization_plan_changes_billing_order_id_fkey'
+            columns: ['billing_order_id']
+            referencedRelation: 'billing_orders'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'organization_plan_changes_changed_by_fkey'
+            columns: ['changed_by']
+            referencedRelation: 'profiles'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'organization_plan_changes_organization_id_fkey'
+            columns: ['organization_id']
+            referencedRelation: 'organizations'
+            referencedColumns: ['id']
+          },
+        ]
       }
       organizations: {
         Row: {
@@ -606,6 +874,35 @@ export interface Database {
           likely_to_convert: boolean
           follow_up_status: string
           owner_note: string | null
+        }[]
+      }
+      record_verified_billing_payment: {
+        Args: {
+          p_provider: string
+          p_provider_order_id: string
+          p_provider_capture_id: string
+          p_capture_status: string
+          p_amount: number
+          p_currency: string
+          p_payer_email?: string | null
+          p_payment_source?: string
+          p_event_source?: string
+          p_event_type?: string | null
+          p_event_summary?: string | null
+          p_provider_event_id?: string | null
+          p_order_payload?: Json
+          p_capture_payload?: Json
+        }
+        Returns: {
+          billing_order_id: string
+          organization_id: string
+          provider_order_id: string
+          provider_capture_id: string
+          payment_status: string
+          order_status: string
+          plan_applied: boolean
+          plan_type: string
+          plan_status: string
         }[]
       }
     }
