@@ -25,6 +25,12 @@ function isMissingAuthSession(error: unknown) {
   return error instanceof Error && error.message.toLowerCase().includes('auth session missing')
 }
 
+function isOwnerAccessRpcError(error: unknown) {
+  const info = getErrorInfo(error)
+  const message = info.message?.toLowerCase() ?? ''
+  return info.code === 'P0001' || message.includes('owner access required')
+}
+
 function getErrorInfo(error: unknown) {
   if (error instanceof Error) {
     return {
@@ -154,19 +160,22 @@ export async function PATCH(
 
     let updated: OwnerListOrganization | null = null
     let source: 'rpc' | 'service_rpc' = 'rpc'
-    const canUseServiceFallback = access.viaEnv && !access.viaDatabase
+    const canUseServiceFallback = serviceRoleValidationPassed && access.allowed
 
     try {
       updated = await updateOwnerOrganizationViaRpc(supabase, rpcArgs)
     } catch (rpcError) {
+      const shouldUseServiceFallback = canUseServiceFallback && isOwnerAccessRpcError(rpcError)
+
       console.warn('[owner-update] Authenticated RPC failed.', {
         organizationId: params.organizationId,
         email: access.normalizedEmail,
         source: 'rpc',
+        shouldUseServiceFallback,
         error: getErrorInfo(rpcError),
       })
 
-      if (!canUseServiceFallback) {
+      if (!shouldUseServiceFallback) {
         throw rpcError
       }
 
@@ -175,9 +184,11 @@ export async function PATCH(
         updated = await updateOwnerOrganizationViaRpc(service, rpcArgs)
         source = 'service_rpc'
 
-        console.warn('[owner-update] Falling back to service RPC after authenticated RPC failure.', {
+        console.warn('[owner-update] Falling back to service RPC after owner-auth mismatch in authenticated RPC.', {
           organizationId: params.organizationId,
           email: access.normalizedEmail,
+          viaEnv: access.viaEnv,
+          viaDatabase: access.viaDatabase,
           error: getErrorInfo(rpcError),
         })
       } catch (serviceRpcError) {
