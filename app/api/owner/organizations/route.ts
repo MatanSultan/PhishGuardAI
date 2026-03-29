@@ -3,7 +3,8 @@ import { NextResponse } from 'next/server'
 import { getAuthenticatedRequestContext, jsonError } from '@/lib/api'
 import { AuthorizationError } from '@/lib/permissions'
 import { requireOwnerUser } from '@/lib/owner/auth'
-import { getOwnerOrganizationsPayload } from '@/lib/owner/service'
+import type { OwnerOrganizationsPayload } from '@/lib/owner/service'
+import { getOwnerOrganizationsPayload, getOwnerOrganizationsPayloadViaRpc } from '@/lib/owner/service'
 import { getSupabaseEnvDiagnostics } from '@/lib/supabase/diagnostics'
 import { getServiceSupabaseClient } from '@/lib/supabase/service'
 
@@ -16,10 +17,9 @@ function isMissingAuthSession(error: unknown) {
 
 export async function GET() {
   try {
-    const { user } = await getAuthenticatedRequestContext()
+    const { supabase, user } = await getAuthenticatedRequestContext()
     const { access } = await requireOwnerUser(user)
 
-    const service = getServiceSupabaseClient()
     const ownerEmail = access.normalizedEmail
     const diagnostics = getSupabaseEnvDiagnostics()
 
@@ -29,14 +29,35 @@ export async function GET() {
       viaDatabase: access.viaDatabase,
       hasServiceKey: access.hasServiceRole,
       supabaseProjectRef: diagnostics.urlProjectRef,
+      serviceKeyKind: diagnostics.serviceKeyKind,
       serviceKeyRole: diagnostics.serviceKeyRole,
       nodeEnv: diagnostics.nodeEnv,
     })
 
-    const payload = await getOwnerOrganizationsPayload(service)
+    let payload: OwnerOrganizationsPayload
+    let source: 'rpc' | 'service_query' = 'rpc'
+    const canUseServiceFallback = access.viaEnv && !access.viaDatabase
+
+    try {
+      payload = await getOwnerOrganizationsPayloadViaRpc(supabase)
+    } catch (rpcError) {
+      if (!canUseServiceFallback) {
+        throw rpcError
+      }
+
+      const service = getServiceSupabaseClient()
+      payload = await getOwnerOrganizationsPayload(service)
+      source = 'service_query'
+
+      console.warn('[owner-list] Falling back to service query after RPC failure.', {
+        email: ownerEmail,
+        message: rpcError instanceof Error ? rpcError.message : 'Unknown RPC error',
+      })
+    }
 
     console.info('[owner-list] response ready', {
       email: ownerEmail,
+      source,
       organizations: payload.organizations.length,
       recent: payload.stats.recent,
     })

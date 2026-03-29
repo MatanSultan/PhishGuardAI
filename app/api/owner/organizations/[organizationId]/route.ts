@@ -4,6 +4,8 @@ import { z } from 'zod'
 import { getAuthenticatedRequestContext, jsonError } from '@/lib/api'
 import { AuthorizationError } from '@/lib/permissions'
 import { requireOwnerUser } from '@/lib/owner/auth'
+import type { OwnerListOrganization } from '@/lib/owner/service'
+import { updateOwnerOrganizationViaRpc } from '@/lib/owner/service'
 import { PLAN_STATUSES, PLAN_TYPES } from '@/lib/constants'
 import { getSupabaseEnvDiagnostics } from '@/lib/supabase/diagnostics'
 import { getServiceSupabaseClient } from '@/lib/supabase/service'
@@ -32,12 +34,11 @@ export async function PATCH(
   },
 ) {
   try {
-    const { user } = await getAuthenticatedRequestContext()
+    const { supabase, user } = await getAuthenticatedRequestContext()
     const params = await context.params
 
     const { access } = await requireOwnerUser(user)
 
-    const service = getServiceSupabaseClient()
     const body = updateSchema.parse(await request.json())
     const diagnostics = getSupabaseEnvDiagnostics()
 
@@ -48,11 +49,12 @@ export async function PATCH(
       viaDatabase: access.viaDatabase,
       payloadKeys: Object.keys(body),
       supabaseProjectRef: diagnostics.urlProjectRef,
+      serviceKeyKind: diagnostics.serviceKeyKind,
       serviceKeyRole: diagnostics.serviceKeyRole,
       nodeEnv: diagnostics.nodeEnv,
     })
 
-    const { data, error } = await service.rpc('owner_update_org_plan', {
+    const rpcArgs = {
       org_id: params.organizationId,
       next_plan_status: body.plan_status ?? null,
       next_plan_type: body.plan_type ?? null,
@@ -63,20 +65,39 @@ export async function PATCH(
       next_follow_up_status: body.follow_up_status ?? null,
       next_owner_note: body.owner_note ?? null,
       actor_id: user?.id ?? null,
-    })
+    }
 
-    if (error) {
-      throw error
+    let updated: OwnerListOrganization | null = null
+    let source: 'rpc' | 'service_rpc' = 'rpc'
+    const canUseServiceFallback = access.viaEnv && !access.viaDatabase
+
+    try {
+      updated = await updateOwnerOrganizationViaRpc(supabase, rpcArgs)
+    } catch (rpcError) {
+      if (!canUseServiceFallback) {
+        throw rpcError
+      }
+
+      const service = getServiceSupabaseClient()
+      updated = await updateOwnerOrganizationViaRpc(service, rpcArgs)
+      source = 'service_rpc'
+
+      console.warn('[owner-update] Falling back to service RPC after authenticated RPC failure.', {
+        organizationId: params.organizationId,
+        email: access.normalizedEmail,
+        message: rpcError instanceof Error ? rpcError.message : 'Unknown RPC error',
+      })
     }
 
     console.info('[owner-update] success', {
       organizationId: params.organizationId,
       email: access.normalizedEmail,
-      updated: Array.isArray(data) ? data.length : Number(Boolean(data)),
+      source,
+      updated: Number(Boolean(updated)),
     })
 
     return NextResponse.json({
-      organization: Array.isArray(data) ? data[0] : data,
+      organization: updated,
     })
   } catch (error) {
     if (error instanceof AuthorizationError) {

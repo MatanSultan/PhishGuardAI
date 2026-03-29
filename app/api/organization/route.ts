@@ -6,6 +6,7 @@ import {
   createOrganization,
   OrganizationServiceError,
 } from '@/lib/organizations/service'
+import { getSupabaseEnvDiagnostics } from '@/lib/supabase/diagnostics'
 import { createOrganizationSchema } from '@/lib/validators/organizations'
 
 export async function GET() {
@@ -38,6 +39,17 @@ export async function POST(request: Request) {
 
     const body = createOrganizationSchema.parse(await request.json())
     const context = await createOrganization(supabase, user.id, body)
+    const diagnostics = getSupabaseEnvDiagnostics()
+
+    console.info('[organization-create] created', {
+      organizationId: context.organization.id,
+      organizationName: context.organization.name,
+      organizationSlug: context.organization.slug,
+      createdBy: user.email ?? user.id,
+      supabaseProjectRef: diagnostics.urlProjectRef,
+      anonKeyKind: diagnostics.anonKeyKind,
+      nodeEnv: diagnostics.nodeEnv,
+    })
 
     return NextResponse.json({
       organization: context.organization,

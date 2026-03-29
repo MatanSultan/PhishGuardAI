@@ -12,7 +12,7 @@ export interface SupabaseEnvDiagnostics {
   anonKeyKind: 'publishable' | 'jwt' | 'unknown'
   anonKeyProjectRef: string | null
   anonKeyRole: string | null
-  serviceKeyKind: 'jwt' | 'unknown'
+  serviceKeyKind: 'secret' | 'publishable' | 'jwt' | 'unknown'
   serviceKeyProjectRef: string | null
   serviceKeyRole: string | null
   serviceKeyMatchesUrl: boolean | null
@@ -81,7 +81,13 @@ export function getSupabaseEnvDiagnostics(): SupabaseEnvDiagnostics {
     : anonClaims
       ? 'jwt'
       : 'unknown'
-  const serviceKeyKind = serviceClaims ? 'jwt' : 'unknown'
+  const serviceKeyKind = env.SUPABASE_SERVICE_ROLE_KEY?.startsWith('sb_secret_')
+    ? 'secret'
+    : env.SUPABASE_SERVICE_ROLE_KEY?.startsWith('sb_publishable_')
+      ? 'publishable'
+      : serviceClaims
+        ? 'jwt'
+        : 'unknown'
 
   return {
     urlHost,
@@ -100,6 +106,12 @@ export function getSupabaseEnvDiagnostics(): SupabaseEnvDiagnostics {
 
 export function assertServiceRoleConfiguration() {
   const diagnostics = getSupabaseEnvDiagnostics()
+
+  if (diagnostics.serviceKeyKind === 'publishable') {
+    throw new Error(
+      `SUPABASE_SERVICE_ROLE_KEY is misconfigured. Received a publishable key for project "${diagnostics.urlProjectRef ?? diagnostics.urlHost}" instead of a service-role/secret key.`,
+    )
+  }
 
   if (diagnostics.serviceKeyKind === 'jwt' && diagnostics.serviceKeyRole !== 'service_role') {
     throw new Error(

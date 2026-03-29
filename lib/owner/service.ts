@@ -3,6 +3,8 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database, TableRow } from '@/lib/database.types'
 
 type AppSupabaseClient = SupabaseClient<Database>
+type OwnerRpcRow = Database['public']['Functions']['owner_list_organizations']['Returns'][number]
+type OwnerUpdateArgs = Database['public']['Functions']['owner_update_org_plan']['Args']
 
 export type OwnerListOrganization = Pick<
   TableRow<'organizations'>,
@@ -47,6 +49,32 @@ export interface OwnerOrganizationsPayload {
   stats: OwnerListStats
 }
 
+function normalizeOwnerOrganization(row: OwnerRpcRow): OwnerListOrganization {
+  return {
+    id: row.id,
+    name: row.name,
+    slug: row.slug,
+    organization_type: (row.organization_type ?? 'other') as TableRow<'organizations'>['organization_type'],
+    plan_type: row.plan_type,
+    plan_status: row.plan_status,
+    max_members_allowed: row.max_members_allowed,
+    trial_ends_at: row.trial_ends_at,
+    access_blocked: row.access_blocked,
+    billing_notes: row.billing_notes,
+    created_at: row.created_at,
+    total_members: row.total_members,
+    active_members: row.active_members,
+    attempts_7d: row.attempts_7d,
+    attempts_30d: row.attempts_30d,
+    last_activity: row.last_activity,
+    pending_invites: row.pending_invites,
+    limit_reached: row.limit_reached,
+    likely_to_convert: row.likely_to_convert,
+    follow_up_status: row.follow_up_status as TableRow<'owner_org_notes'>['follow_up_status'],
+    owner_note: row.owner_note,
+  }
+}
+
 export function buildOwnerStats(organizations: OwnerListOrganization[]): OwnerListStats {
   return {
     total: organizations.length,
@@ -59,6 +87,37 @@ export function buildOwnerStats(organizations: OwnerListOrganization[]): OwnerLi
     activeLast7: organizations.filter((org) => org.attempts_7d > 0).length,
     recent: organizations.slice(0, 5).map((org) => org.name),
   }
+}
+
+export async function getOwnerOrganizationsPayloadViaRpc(
+  client: AppSupabaseClient,
+): Promise<OwnerOrganizationsPayload> {
+  const { data, error } = await client.rpc('owner_list_organizations')
+
+  if (error) {
+    throw error
+  }
+
+  const organizations = ((data ?? []) as OwnerRpcRow[]).map(normalizeOwnerOrganization)
+
+  return {
+    organizations,
+    stats: buildOwnerStats(organizations),
+  }
+}
+
+export async function updateOwnerOrganizationViaRpc(
+  client: AppSupabaseClient,
+  args: OwnerUpdateArgs,
+): Promise<OwnerListOrganization | null> {
+  const { data, error } = await client.rpc('owner_update_org_plan', args)
+
+  if (error) {
+    throw error
+  }
+
+  const row = ((data ?? []) as OwnerRpcRow[])[0]
+  return row ? normalizeOwnerOrganization(row) : null
 }
 
 export async function getOwnerOrganizationsPayload(
